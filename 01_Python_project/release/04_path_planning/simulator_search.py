@@ -69,6 +69,7 @@ def _log_static(data: dict) -> None:
 def _log_search(data: dict) -> None:
     frames: list[dict] = data.get("frames", [])
     visited: list[list[float]] = []
+    n_frames = len(frames)
     for i, frame in enumerate(frames):
         rr.set_time("step", sequence=i)
         cur = frame["current"]
@@ -87,6 +88,12 @@ def _log_search(data: dict) -> None:
             rr.log("world/frontier", rr.Clear(recursive=False))
         rr.log("world/current",
                rr.Points2D([cur], colors=[_CURRENT_COLOR], radii=[0.5]))
+        # 실시간 status (TextDocumentView 옆 패널) — scrubber 따라 갱신.
+        status = (f"step {i + 1} / {n_frames}\n"
+                  f"visited: {len(visited)}\n"
+                  f"frontier: {len(frontier)}\n"
+                  f"current: ({cur[0]}, {cur[1]})")
+        rr.log("info/status", rr.TextDocument(status))
 
     # 최종 path — 마지막 step 다음 frame 에 한 번 로그.
     path = data.get("path", [])
@@ -99,7 +106,11 @@ def _log_search(data: dict) -> None:
 
 def _build_blueprint() -> rrb.Blueprint:
     return rrb.Blueprint(
-        rrb.Spatial2DView(origin="/world", name="search"),
+        rrb.Horizontal(
+            rrb.Spatial2DView(origin="/world", name="search"),
+            rrb.TextDocumentView(origin="/info/status", name="status"),
+            column_shares=[4, 1],
+        ),
     )
 
 

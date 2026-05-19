@@ -70,6 +70,8 @@ def _log_search(data: dict) -> None:
     frames: list[dict] = data.get("frames", [])
     visited: list[list[float]] = []
     n_frames = len(frames)
+    # 알고리즘별 메타 (예: A* weight) — 있으면 status 에 한 줄 추가.
+    weight = data.get("weight")
     for i, frame in enumerate(frames):
         rr.set_time("step", sequence=i)
         cur = frame["current"]
@@ -89,11 +91,13 @@ def _log_search(data: dict) -> None:
         rr.log("world/current",
                rr.Points2D([cur], colors=[_CURRENT_COLOR], radii=[0.5]))
         # 실시간 status (TextDocumentView 옆 패널) — scrubber 따라 갱신.
-        status = (f"step {i + 1} / {n_frames}\n"
-                  f"visited: {len(visited)}\n"
-                  f"frontier: {len(frontier)}\n"
-                  f"current: ({cur[0]}, {cur[1]})")
-        rr.log("info/status", rr.TextDocument(status))
+        lines = [f"step {i + 1} / {n_frames}",
+                 f"visited: {len(visited)}",
+                 f"frontier: {len(frontier)}",
+                 f"current: ({cur[0]}, {cur[1]})"]
+        if weight is not None:
+            lines.append(f"weight: {weight}")
+        rr.log("info/status", rr.TextDocument("\n".join(lines)))
 
     # 최종 path — 마지막 step 다음 frame 에 한 번 로그.
     path = data.get("path", [])

@@ -63,6 +63,7 @@ def main() -> None:
         "obstacles": [[x, y] for (x, y) in sorted(OBSTACLES)],
         "frames": frames,
         "path": [[x, y] for (x, y) in path],
+        "weight": float(args.weight),  # simulator_search status 패널 표시용 메타.
     }
     out = Path(__file__).parent / "record.json"
     out.write_text(json.dumps(record), encoding="utf-8")

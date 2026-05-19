@@ -26,12 +26,12 @@ class LowPassFilter:
 
 테스트 (합격 검증):
 ```bash
-uv run pytest 01_Python_project_refactored/release/01_filters/03_low_pass_filter/ -v
+uv run pytest 01_Python_project/release/01_filters/03_low_pass_filter/ -v
 ```
 
 데모 (시각 확인, 선택 — 구현 후):
 ```bash
-uv run python 01_Python_project_refactored/release/01_filters/03_low_pass_filter/demo.py
+uv run python 01_Python_project/release/01_filters/03_low_pass_filter/demo.py
 ```
 → sin(t) + N(0, 0.5) 노이즈를 α=0.9 로 평활한 결과 plotly 그래프.
 

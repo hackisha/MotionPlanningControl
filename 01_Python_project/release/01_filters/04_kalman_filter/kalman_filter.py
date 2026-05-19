@@ -17,6 +17,16 @@ class KalmanFilter:
         self.P = p0
 
     def step(self, measurement: float, control_input: float) -> float:
+        x_pred = self.A * self.x + self.B * control_input
+        P_pred = self.A**2 * self.P + self.Q
+        K = P_pred * self.C / (self.C**2 * P_pred + self.R)
+        x_new = x_pred + K * (measurement - self.C * x_pred)
+        P_new = (1 - K * self.C) * P_pred
+
+        self.x = x_new
+        self.P = P_new
+        return self.x
+    
         # TODO: 한 번의 Predict + Update 수행 후 갱신된 추정값을 반환.
         # Predict:
         #   x_pred = A · x + B · u

@@ -39,7 +39,7 @@ def main() -> None:
     )
     # [튜닝] 게인/파라미터 값을 바꿔 응답 변화 비교 — test_*.py 의 값은 변경 X (합격 기준)
     lpf = LowPassFilter(alpha=0.9)
-    pid = PIDController(kp=2.0, kd=2.0, ki=0.5, dt=dt)
+    pid = PIDController(kp=2.0, kd=1.5, ki=0.5, dt=dt)
 
     t = np.arange(steps) * dt
     y_true = np.zeros(steps)

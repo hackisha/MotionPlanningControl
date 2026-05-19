@@ -12,7 +12,7 @@
 → 이전 과제(03)의 plant 보다 명확히 어려움. 외란 보상 + 약한 액추에이터를 함께 다뤄야 함.
 
 ## 인터페이스 계약 (학생 작성 위치)
-**파일**: `01_Python_project_refactored/release/02_pid/04_pid_tuning/tuning.py`
+**파일**: `01_Python_project/release/02_pid/04_pid_tuning/tuning.py`
 
 ```python
 KP: float = 0.0   # ← 학생이 결정
@@ -29,12 +29,12 @@ KI: float = 0.0
 
 테스트:
 ```bash
-uv run pytest 01_Python_project_refactored/release/02_pid/04_pid_tuning/ -v
+uv run pytest 01_Python_project/release/02_pid/04_pid_tuning/ -v
 ```
 
 시나리오 실행 → `record.json` 생성 + Rerun viewer 자동 띄움 (**튜닝 보조 — 반복 실행 권장**):
 ```bash
-uv run python 01_Python_project_refactored/release/02_pid/04_pid_tuning/record_gen.py
+uv run python 01_Python_project/release/02_pid/04_pid_tuning/record_gen.py
 ```
 → 학생이 채운 `tuning.py` 의 KP/KD/KI 로 폐루프 응답. 차량이 차로 중앙으로 수렴하는 모양 + control 시계열을 보고 게인 재조정.
 

@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: ivs-planning-control
+Version: 0.0.0
+Summary: Internal — IVS planning & control teaching repo (not distributed)
+Requires-Python: ==3.14.*
+Requires-Dist: numpy>=1.24
+Requires-Dist: plotly>=5
+Requires-Dist: pytest>=7
+Requires-Dist: rerun-sdk>=0.32.0

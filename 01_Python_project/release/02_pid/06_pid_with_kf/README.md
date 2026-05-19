@@ -38,12 +38,12 @@ def closed_loop_step(
 
 테스트:
 ```bash
-uv run pytest 01_Python_project_refactored/release/02_pid/06_pid_with_kf/ -v
+uv run pytest 01_Python_project/release/02_pid/06_pid_with_kf/ -v
 ```
 
 시나리오 실행 → `record.json` 생성 + Rerun viewer 자동 띄움:
 ```bash
-uv run python 01_Python_project_refactored/release/02_pid/06_pid_with_kf/record_gen.py
+uv run python 01_Python_project/release/02_pid/06_pid_with_kf/record_gen.py
 ```
 → ego (파랑) 가 true Y, 노란 점 = noisy measurement, 청록 점 = KF estimate. LPF (05) 보다 위상 지연 적은 model-based 추정의 3D 시각화.
 
@@ -51,7 +51,7 @@ uv run python 01_Python_project_refactored/release/02_pid/06_pid_with_kf/record_
 
 Rerun viewer 로 재생:
 ```bash
-uv run python 01_Python_project_refactored/release/02_pid/simulator_pid.py 01_Python_project_refactored/release/02_pid/06_pid_with_kf/
+uv run python 01_Python_project/release/02_pid/simulator_pid.py 01_Python_project/release/02_pid/06_pid_with_kf/
 ```
 
 > **시뮬레이터는 챕터 전체용** — 인자 없이 실행하면 `02_pid/` 하위 모든 시나리오를 한 viewer 에 별도 recording 으로 멀티 로드, viewer 좌측 Recordings 패널에서 클릭 전환. `--camera follow|fixed` 로 초기 카메라 (기본 `follow`).

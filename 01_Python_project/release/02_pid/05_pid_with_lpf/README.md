@@ -35,12 +35,12 @@ def closed_loop_step(
 
 테스트:
 ```bash
-uv run pytest 01_Python_project_refactored/release/02_pid/05_pid_with_lpf/ -v
+uv run pytest 01_Python_project/release/02_pid/05_pid_with_lpf/ -v
 ```
 
 시나리오 실행 → `record.json` 생성 + Rerun viewer 자동 띄움:
 ```bash
-uv run python 01_Python_project_refactored/release/02_pid/05_pid_with_lpf/record_gen.py
+uv run python 01_Python_project/release/02_pid/05_pid_with_lpf/record_gen.py
 ```
 → ego (파랑) 가 true Y, 노란 점 = noisy measurement, 청록 점 = LPF estimate. 필터가 noise 를 얼마나 부드럽게 만드는지 3D + scalar 양쪽으로 관찰.
 
@@ -48,7 +48,7 @@ uv run python 01_Python_project_refactored/release/02_pid/05_pid_with_lpf/record
 
 Rerun viewer 로 재생:
 ```bash
-uv run python 01_Python_project_refactored/release/02_pid/simulator_pid.py 01_Python_project_refactored/release/02_pid/05_pid_with_lpf/
+uv run python 01_Python_project/release/02_pid/simulator_pid.py 01_Python_project_refactored/release/02_pid/05_pid_with_lpf/
 ```
 
 > **시뮬레이터는 챕터 전체용** — 인자 없이 실행하면 `02_pid/` 하위 모든 시나리오를 한 viewer 에 별도 recording 으로 멀티 로드, viewer 좌측 Recordings 패널에서 클릭 전환. `--camera follow|fixed` 로 초기 카메라 (기본 `follow`).

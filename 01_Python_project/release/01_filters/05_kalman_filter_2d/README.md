@@ -54,18 +54,18 @@ class KalmanFilter2D:
 
 테스트 (합격 검증):
 ```bash
-uv run pytest 01_Python_project_refactored/release/01_filters/05_kalman_filter_2d/ -v
+uv run pytest 01_Python_project/release/01_filters/05_kalman_filter_2d/ -v
 ```
 
 CV 데모 (등속 운동, 시각 확인 — 구현 후):
 ```bash
-uv run python 01_Python_project_refactored/release/01_filters/05_kalman_filter_2d/cv_demo.py
+uv run python 01_Python_project/release/01_filters/05_kalman_filter_2d/cv_demo.py
 ```
 → truth = v·t (등속), 위치만 노이즈 측정, 위치 + 속도 동시 추정 plotly 그래프 (subplot 2개).
 
 SMD 데모 (스프링-매스-댐퍼, 자유 진동 — 구현 후):
 ```bash
-uv run python 01_Python_project_refactored/release/01_filters/05_kalman_filter_2d/smd_demo.py
+uv run python 01_Python_project/release/01_filters/05_kalman_filter_2d/smd_demo.py
 ```
 → m=10, k=100, b=2 자유 진동 시스템, 위치만 노이즈 측정.
 

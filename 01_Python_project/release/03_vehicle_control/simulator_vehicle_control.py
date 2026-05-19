@@ -252,12 +252,33 @@ def _build_blueprint(data: dict, camera: str) -> rrb.Blueprint:
 
 
 def _log_static_environment(data: dict) -> None:
-    """기준 경로 + 차선 (시간 무관, 1회 로그). current global recording 에 보냄."""
+    """기준 경로 + 차선 + 3D 장애물 + start/goal marker (시간 무관, 1회 로그)."""
     if "reference_path" in data:
         ref = data["reference_path"]
         pts = np.column_stack([ref["X"], ref["Y"], np.zeros(len(ref["X"]))])
         rr.log("world/reference_path",
                rr.LineStrips3D([pts], colors=[(80, 80, 80)], radii=[0.05]),
+               static=True)
+    # 3D 장애물 — (x, y, radius, height) box 로 렌더. inscribed circle ≈ collision r.
+    for i, obs in enumerate(data.get("obstacles_3d", [])):
+        ox = float(obs["x"]); oy = float(obs["y"])
+        radius = float(obs["radius"]); height = float(obs.get("height", 2.0))
+        rr.log(f"world/obstacles_3d/obs_{i}",
+               rr.Boxes3D(centers=[[ox, oy, height / 2.0]],
+                          half_sizes=[[radius, radius, height / 2.0]],
+                          fill_mode=rr.components.FillMode.Solid,
+                          colors=[(150, 100, 60, 200)]),
+               static=True)
+    # start / goal marker — 2D 좌표 ([x, y]) 만 받음, 지면 위 작은 sphere 로.
+    if "start_marker" in data:
+        sx, sy = float(data["start_marker"][0]), float(data["start_marker"][1])
+        rr.log("world/start_marker",
+               rr.Points3D([[sx, sy, 0.3]], colors=[(50, 100, 220)], radii=[0.4]),
+               static=True)
+    if "goal_marker" in data:
+        gx, gy = float(data["goal_marker"][0]), float(data["goal_marker"][1])
+        rr.log("world/goal_marker",
+               rr.Points3D([[gx, gy, 0.3]], colors=[(220, 60, 60)], radii=[0.4]),
                static=True)
     for i, lane in enumerate(data.get("lanes", [])):
         kind = lane.get("kind", "lane")

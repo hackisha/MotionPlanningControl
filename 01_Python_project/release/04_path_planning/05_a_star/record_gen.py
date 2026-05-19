@@ -1,7 +1,7 @@
-"""Dijkstra search 시각화 — 실시간 노드 expansion + 최종 path 를 Rerun 2D 로 재생.
+"""A* search 시각화 — 실시간 노드 expansion + 최종 path 를 Rerun 2D 로 재생.
 
-`on_step` 콜백으로 매 expand 마다 (current, frontier) 를 캡처 → `--skip` 단위로
-batch 묶어 frame 1 개로 직렬화. 재생: 같은 폴더 ../simulator_search.py.
+`--weight` 로 heuristic 가중치 조정 (1.0 = 최적, 10.0 = greedy bias).
+`--skip` 로 frame subsample (기본 10). 재생: 같은 폴더 ../simulator_search.py.
 """
 from __future__ import annotations
 
@@ -10,19 +10,22 @@ import json
 import sys
 from pathlib import Path
 
-from dijkstra import dijkstra
-from map_dijkstra import GOAL, GRID_SIZE, OBSTACLES, START
+from a_star import a_star
+from map_astar import GOAL, GRID_SIZE, OBSTACLES, START
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Dijkstra 탐색 실행 → record.json 생성 (Rerun viewer 로 단계별 재생)")
+        description="A* 탐색 실행 → record.json 생성 (Rerun viewer 로 단계별 재생)")
     parser.add_argument("--no-viewer", action="store_true",
                         help="record JSON 만 생성하고 Rerun viewer 안 띄움 (CI/batch 용)")
     parser.add_argument("--skip", type=int, default=10,
                         help="N step 마다 frame 1 개로 묶음 (기본 10). "
-                             "visited 누적은 batch 내 모든 expand 노드를 한 번에 반영해 정확. "
-                             "1 = subsample 안 함, 큰 값 = viewer scrubber 가 짧아짐.")
+                             "1 = subsample 안 함.")
+    # [튜닝] weight_heuristic 을 바꿔 응답 변화 비교 — test 의 값은 변경 X (합격 기준)
+    parser.add_argument("--weight", type=float, default=1.0,
+                        help="heuristic 가중치 (기본 1.0 = admissible 최적). "
+                             ">1 일수록 goal 방향 greedy bias — 적은 expand, 최적성 약화.")
     args = parser.parse_args()
     skip = max(1, args.skip)
 
@@ -34,11 +37,11 @@ def main() -> None:
             "frontier": [[p[0], p[1]] for p in frontier],
         })
 
-    path = dijkstra(START, GOAL, OBSTACLES, on_step=on_step)
+    path = a_star(START, GOAL, OBSTACLES,
+                  weight_heuristic=args.weight, on_step=on_step)
     if not path:
         print("[record] WARNING: 경로 미발견")
 
-    # raw 전체 step 을 skip 단위로 묶어 frame 화. expanded = batch 내 expand 노드들.
     frames: list[dict] = []
     for i in range(0, len(raw_steps), skip):
         end = min(i + skip, len(raw_steps))
@@ -52,7 +55,7 @@ def main() -> None:
 
     record = {
         "schema_version": 1,
-        "module": "04_path_planning/04_dijkstra",
+        "module": "04_path_planning/05_a_star",
         "kind": "search",
         "grid_size": GRID_SIZE,
         "start": [START[0], START[1]],
@@ -63,8 +66,9 @@ def main() -> None:
     }
     out = Path(__file__).parent / "record.json"
     out.write_text(json.dumps(record), encoding="utf-8")
-    print(f"[record] saved → {out} ({len(raw_steps)} raw → {len(frames)} frames "
-          f"(skip={skip}), path={len(path)} nodes)  |  재생: simulator_search.py")
+    print(f"[record] saved → {out} (weight={args.weight}, "
+          f"{len(raw_steps)} raw → {len(frames)} frames (skip={skip}), "
+          f"path={len(path)} nodes)  |  재생: simulator_search.py")
 
     if not args.no_viewer:
         sys.path.insert(0, str(Path(__file__).parent.parent))

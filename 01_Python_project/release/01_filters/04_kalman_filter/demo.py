@@ -16,8 +16,9 @@ def main() -> None:
     truth = 5.0
     samples = truth + rng.normal(loc=0.0, scale=1.0, size=n)
 
-    # [튜닝] 게인/파라미터 값을 바꿔 응답 변화 비교 — test_*.py 의 값은 변경 X (합격 기준)
-    kf = KalmanFilter(m=1.0, dt=0.01, q=0.0, r=0.0, p0=0.0)
+    # [튜닝] 게인/파라미터 값을 바꿔 응답 변화 비교 — test_*.py 의 값은 변경 X (합격 기준).
+    # q=r=p0=0 은 K = 0/0 div by zero 유발 → 작동 가능한 seed 값으로 시작.
+    kf = KalmanFilter(m=1.0, dt=0.01, q=0.01, r=1.0, p0=10.0)
     estimate = np.array([kf.step(z, control_input=0.0) for z in samples])
 
     fig = go.Figure()

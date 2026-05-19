@@ -15,8 +15,9 @@ def main() -> None:
     truth = 5.0
     samples = rng.normal(loc=truth, scale=1.0, size=200)
 
-    # [튜닝] 게인/파라미터 값을 바꿔 응답 변화 비교 — test_*.py 의 값은 변경 X (합격 기준)
-    maf = MovingAverageFilter(window=1)
+    # [튜닝] 게인/파라미터 값을 바꿔 응답 변화 비교 — test_*.py 의 값은 변경 X (합격 기준).
+    # window=1 은 pass-through (필터 효과 0) — 작동 가능한 seed 값으로 시작.
+    maf = MovingAverageFilter(window=15)
     estimate = np.array([maf.step(s) for s in samples])
 
     fig = go.Figure()

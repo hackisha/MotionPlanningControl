@@ -72,7 +72,9 @@ def _log_search(data: dict) -> None:
     for i, frame in enumerate(frames):
         rr.set_time("step", sequence=i)
         cur = frame["current"]
-        visited.append(cur)
+        # 'expanded' 가 있으면 batch (skip 시 batch 내 모든 expand 노드) — 한 번에 누적.
+        # 없으면 backward-compat: current 1 개만.
+        visited.extend(frame.get("expanded", [cur]))
         rr.log("world/visited",
                rr.Points2D(np.array(visited, dtype=float),
                            colors=[_VISITED_COLOR], radii=[0.3]))

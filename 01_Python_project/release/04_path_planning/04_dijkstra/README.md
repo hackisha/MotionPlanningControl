@@ -51,6 +51,7 @@ uv run python 01_Python_project_refactored/release/04_path_planning/04_dijkstra/
 → Rerun 2D viewer 에 격자 + 장애물 (검정) + start (파랑) + goal (빨강) 표시. 좌측 timeline scrubber `step` 슬라이드 → 매 step 의 current (주황), 누적 visited (옅은 노랑), 현재 frontier (초록) 가 갱신됨. 마지막 step 후 최종 path (마젠타) 가 그려진다.
 
 > JSON 만 만들고 viewer 안 띄우려면 record_gen 명령에 `--no-viewer` 옵션 추가.
+> Frame 수가 너무 많아 scrubber 가 답답하면 `--skip N` 으로 N step 마다 frame 1 개로 묶을 수 있음 (기본 10, `--skip 1` = subsample 없음). visited 누적은 batch 내 모든 expand 노드를 한꺼번에 반영해 정확.
 
 Rerun viewer 로 재생 (chapter 전체 search records 멀티 로드):
 ```bash

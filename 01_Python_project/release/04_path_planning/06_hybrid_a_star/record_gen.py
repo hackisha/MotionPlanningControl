@@ -97,8 +97,9 @@ def main() -> None:
         description="Hybrid A* 탐색 + Pure Pursuit 추종 → record.json (Rerun 3D 재생)")
     parser.add_argument("--no-viewer", action="store_true",
                         help="record JSON 만 생성하고 Rerun viewer 안 띄움")
-    parser.add_argument("--skip", type=int, default=1,
-                        help="search expansion 을 N 단위 batch 로 묶음 (기본 1).")
+    parser.add_argument("--skip", type=int, default=10,
+                        help="search expansion 을 N 단위 batch 로 묶음 (기본 10). "
+                             "1 = subsample 안 함.")
     args = parser.parse_args()
     skip = max(1, args.skip)
 
@@ -118,11 +119,9 @@ def main() -> None:
     if not path:
         raise SystemExit("[record] ERROR — Hybrid A* 경로 미발견")
 
-    # search 시각화 timeline: 매 batch (skip step 묶음) 마다 viz frame 1개
-    search_actor_t: list[float] = []
-    search_actor_X: list[float] = []
-    search_actor_Y: list[float] = []
-    search_actor_Yaw: list[float] = []
+    # search 시각화 timeline: scalars (visited/frontier count) 만 batch 단위로 누적.
+    # ego 는 search 중 정지 — t=0 에 START pose 로 1회 로그, control phase 가
+    # 시작하기 전까지 viewer 가 그 pose 를 유지.
     scalar_t: list[float] = []
     visited_count_v: list[float] = []
     frontier_count_v: list[float] = []
@@ -132,16 +131,17 @@ def main() -> None:
         batch = raw_steps[i:end_i]
         last = batch[-1]
         t = i * DT_SEARCH_VIZ
-        search_actor_t.append(t)
-        search_actor_X.append(last["current"][0])
-        search_actor_Y.append(last["current"][1])
-        search_actor_Yaw.append(last["current"][2])
         visited_total += len(batch)
         scalar_t.append(t)
         visited_count_v.append(float(visited_total))
         frontier_count_v.append(float(last["frontier_count"]))
 
     t_search_end = max(1, len(raw_steps) - 1) * DT_SEARCH_VIZ
+    # ego 는 search 동안 START 에 정지. 2 개 timestamp 만 (t=0, t=T_search) 모두 START pose.
+    search_actor_t = [0.0, t_search_end]
+    search_actor_X = [float(START[0]), float(START[0])]
+    search_actor_Y = [float(START[1]), float(START[1])]
+    search_actor_Yaw = [float(START[2]), float(START[2])]
 
     # ── Control phase (Pure Pursuit path following) ─────────────────
     ego_xyz = [START[0], START[1], START[2]]

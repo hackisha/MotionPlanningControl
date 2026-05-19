@@ -12,21 +12,21 @@ viewer 좌측 패널의 Recordings 목록에서 클릭하면 시나리오 전환
 Usage (git root cwd 기준):
     # 1) 인자 없이 - 스크립트 폴더 하위 모든 record*.json 멀티 로드 (기본)
     uv run python \\
-        01_Python_project_refactored/release/03_vehicle_control/simulator_vehicle_control.py
+        01_Python_project_refactored/solutions/03_vehicle_control/simulator_vehicle_control.py
 
     # 2) 파일 지정 - 그 파일 하나만 로드
     uv run python \\
-        01_Python_project_refactored/release/03_vehicle_control/simulator_vehicle_control.py \\
-        01_Python_project_refactored/release/03_vehicle_control/06_lat_pid_ff/record_high_speed.json
+        01_Python_project_refactored/solutions/03_vehicle_control/simulator_vehicle_control.py \\
+        01_Python_project_refactored/solutions/03_vehicle_control/06_lat_pid_ff/record_high_speed.json
 
     # 3) 디렉토리 지정 - 그 폴더 하위 모든 record 멀티 로드
     uv run python \\
-        01_Python_project_refactored/release/03_vehicle_control/simulator_vehicle_control.py \\
-        01_Python_project_refactored/release/03_vehicle_control/06_lat_pid_ff
+        01_Python_project_refactored/solutions/03_vehicle_control/simulator_vehicle_control.py \\
+        01_Python_project_refactored/solutions/03_vehicle_control/06_lat_pid_ff
 
     # 카메라 모드 (기본 follow=ego 추종) - ego 시작 위치 고정으로 보려면
     uv run python \\
-        01_Python_project_refactored/release/03_vehicle_control/simulator_vehicle_control.py \\
+        01_Python_project_refactored/solutions/03_vehicle_control/simulator_vehicle_control.py \\
         --camera fixed
 
 JSON schema (v2; v1 도 계속 재생 가능 - lanes 없으면 생략):
@@ -96,14 +96,17 @@ APP_ID = "vehicle_control_replay"
 CAMERA_TILT_DEG = 40.0              # vertical 기준 기울기 (0=top-down, 클수록 측면)
 CAMERA_HEADING_OFFSET_DEG = 30.0    # 차량 진행방향을 화면상 1시(시계 30°)로
 
-# lane kind -> (color, radius). "center" 는 dashed (split segments) 로 그려진다.
-_LANE_STYLE = {
-    "edge": ((230, 230, 230), 0.12),
-    "lane": ((120, 120, 120), 0.06),
-    "center": ((255, 255, 255), 0.06),   # 흰색 (dashed 처리)
+# lane kind -> style dict.
+# render: "line" 는 연속 LineStrips3D, "dashed" 는 dash_m/gap_m 으로 segment split,
+# "dots" 는 stride_m 마다 Points3D marker.
+_LANE_STYLE: dict[str, dict] = {
+    "edge":   {"color": (230, 230, 230), "radius": 0.12, "render": "line"},
+    "lane":   {"color": (120, 120, 120), "radius": 0.06, "render": "line"},
+    "center": {"color": (255, 255, 255), "radius": 0.06, "render": "dashed",
+               "dash_m": 2.0, "gap_m": 2.0},
+    "dotted": {"color": (255, 255, 255), "radius": 0.12, "render": "dots",
+               "stride_m": 1.0},
 }
-_CENTER_DASH_M = 2.0   # dash 길이 (m)
-_CENTER_GAP_M = 2.0    # gap 길이 (m)
 
 
 def _yaw_quat(yaw: float) -> rr.Quaternion:
@@ -258,16 +261,19 @@ def _log_static_environment(data: dict) -> None:
                static=True)
     for i, lane in enumerate(data.get("lanes", [])):
         kind = lane.get("kind", "lane")
-        color, radius = _LANE_STYLE.get(kind, _LANE_STYLE["lane"])
+        style = _LANE_STYLE.get(kind, _LANE_STYLE["lane"])
+        color = style["color"]
+        radius = style["radius"]
+        render = style.get("render", "line")
         xs = np.asarray(lane["X"], dtype=float)
         ys = np.asarray(lane["Y"], dtype=float)
         zs = np.zeros(len(xs))
         entity = f"world/lanes/{kind}_{i}"
-        if kind == "center" and len(xs) >= 2:
+        if render == "dashed" and len(xs) >= 2:
             # dashed: lane["X"] 의 등간격 가정 — 점 개수로 split.
             step = float(xs[1] - xs[0])
-            dash_pts = max(2, int(round(_CENTER_DASH_M / max(step, 1e-6))))
-            gap_pts = max(1, int(round(_CENTER_GAP_M / max(step, 1e-6))))
+            dash_pts = max(2, int(round(style["dash_m"] / max(step, 1e-6))))
+            gap_pts = max(1, int(round(style["gap_m"] / max(step, 1e-6))))
             segments: list[np.ndarray] = []
             j = 0
             while j < len(xs):
@@ -281,6 +287,14 @@ def _log_static_environment(data: dict) -> None:
                        rr.LineStrips3D(segments, colors=[color] * n_seg,
                                        radii=[radius] * n_seg),
                        static=True)
+        elif render == "dots" and len(xs) >= 1:
+            # dots: stride_m 마다 marker 1 개 (Points3D).
+            step = float(xs[1] - xs[0]) if len(xs) >= 2 else 1.0
+            stride = max(1, int(round(style["stride_m"] / max(step, 1e-6))))
+            pts = np.column_stack([xs[::stride], ys[::stride], zs[::stride]])
+            rr.log(entity,
+                   rr.Points3D(pts, colors=[color], radii=[radius]),
+                   static=True)
         else:
             pts = np.column_stack([xs, ys, zs])
             rr.log(entity,

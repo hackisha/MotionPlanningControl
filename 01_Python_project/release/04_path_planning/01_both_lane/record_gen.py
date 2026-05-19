@@ -111,7 +111,7 @@ def run_sim() -> dict:
         "lanes": [
             {"X": X_lane_all.tolist(), "Y": Y_lane_L_all.tolist(), "kind": "edge"},
             {"X": X_lane_all.tolist(), "Y": Y_lane_R_all.tolist(), "kind": "edge"},
-            {"X": X_lane_all.tolist(), "Y": Y_lane_C_all.tolist(), "kind": "center"},
+            {"X": X_lane_all.tolist(), "Y": Y_lane_C_all.tolist(), "kind": "dotted"},
         ],
         "scalars": [
             {"name": "lateral_err", "unit": "m", "t": t.tolist(),

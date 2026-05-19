@@ -110,7 +110,7 @@ def run_sim() -> dict:
         lanes_out.append({"X": X_seg, "Y": Y_seg, "kind": "edge"})
     for X_seg, Y_seg in _valid_segments(X_lane_all, Y_R_all, vR_all):
         lanes_out.append({"X": X_seg, "Y": Y_seg, "kind": "edge"})
-    lanes_out.append({"X": X_lane_all.tolist(), "Y": Y_C_all.tolist(), "kind": "center"})
+    lanes_out.append({"X": X_lane_all.tolist(), "Y": Y_C_all.tolist(), "kind": "dotted"})
 
     return {
         "schema_version": 2,

@@ -109,10 +109,8 @@ def run_sim() -> dict:
             for lx, ly in ev_path.points
         ])
 
-    X_lane_all = np.arange(float(min(X_ego.min(), X_lead.min())) - 10.0,
-                           float(max(X_ego.max(), X_lead.max())) + 10.0, 0.5)
-    Y_L_all, Y_R_all = lane(X_lane_all)
-    Y_C_all = lane_center(X_lane_all)
+    # 본 시나리오는 주변 차선 정보를 ego 가 사용하지 않음 — viz 에 차선 표시 X.
+    # (leading 은 내부적으로 lane keep 하지만 시각 강조는 'ego 가 앞차만 보고 간다'.)
 
     return {
         "schema_version": 2,
@@ -125,11 +123,6 @@ def run_sim() -> dict:
             {"name": "ego", "L": 4.0, "W": 2.0, "color": [50, 100, 220, 120],
              "t": t.tolist(), "X": X_ego.tolist(), "Y": Y_ego.tolist(),
              "Yaw": Yaw_ego.tolist()},
-        ],
-        "lanes": [
-            {"X": X_lane_all.tolist(), "Y": Y_L_all.tolist(), "kind": "edge"},
-            {"X": X_lane_all.tolist(), "Y": Y_R_all.tolist(), "kind": "edge"},
-            {"X": X_lane_all.tolist(), "Y": Y_C_all.tolist(), "kind": "center"},
         ],
         "scalars": [
             {"name": "follow_err", "unit": "m", "t": t.tolist(),

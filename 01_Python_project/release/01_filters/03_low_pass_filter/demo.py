@@ -18,8 +18,8 @@ def main() -> None:
     samples = truth + noise
 
     # [튜닝] 게인/파라미터 값을 바꿔 응답 변화 비교 — test_*.py 의 값은 변경 X (합격 기준).
-    # alpha=0 은 pass-through (필터 효과 0) — 작동 가능한 seed 값으로 시작.
-    lpf = LowPassFilter(alpha=0.9)
+    # alpha 는 0 으로 초기화 — 학생이 직접 값을 골라 채워야 함.
+    lpf = LowPassFilter(alpha=0.0)
     estimate = np.array([lpf.step(s) for s in samples])
 
     fig = go.Figure()

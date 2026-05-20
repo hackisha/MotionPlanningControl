@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>과제 — PID Controller (비례 + 적분 + 미분 제어)</title>
+  <style>
+    :root {
+      --ink: #1a2330;
+      --muted: #5b6675;
+      --line: #d9dee6;
+      --accent: #1f6feb;
+      --accent-soft: #e8f0fe;
+      --warn: #b3541e;
+      --warn-soft: #fdf0e6;
+      --ok: #1f7a3d;
+      --code-bg: #f4f6f9;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      line-height: 1.7;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 28px 96px;
+      background: #fff;
+    }
+
+    h1 {
+      font-size: 1.7rem;
+      margin: 0 0 4px;
+      letter-spacing: -0.01em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.98rem;
+      margin-bottom: 28px;
+    }
+
+    h2 {
+      font-size: 1.18rem;
+      margin: 38px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--line);
+    }
+
+    h2 .num {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.82rem;
+      width: 1.55em;
+      height: 1.55em;
+      line-height: 1.55em;
+      text-align: center;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: 1px;
+    }
+
+    h3 {
+      font-size: 1.02rem;
+      margin: 22px 0 6px;
+    }
+
+    p {
+      margin: 8px 0;
+    }
+
+    code {
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .scenario-card {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 1.02rem;
+    }
+
+    .formula {
+      background: #fbfcfe;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 14px 0;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.96rem;
+    }
+
+    .formula .lbl {
+      color: var(--muted);
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 0.94rem;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--code-bg);
+      font-weight: 600;
+    }
+
+    ul,
+    ol {
+      margin: 8px 0;
+      padding-left: 24px;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    .note {
+      background: var(--warn-soft);
+      border-left: 4px solid var(--warn);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 0.94rem;
+    }
+
+    .note b {
+      color: var(--warn);
+    }
+
+    .fig {
+      margin: 22px 0;
+      text-align: center;
+    }
+
+    .fig figcaption {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-top: 8px;
+    }
+
+    .pass-list li {
+      margin: 8px 0;
+    }
+
+    .pass-list b {
+      color: var(--ok);
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-left: 6px;
+      vertical-align: 2px;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 32px 0;
+    }
+
+    .footer {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>PID Controller — 비례 + 적분 + 미분 제어기 구현</h1>
+  <p class="subtitle">Chapter 2 · PID / 03_pid_controller &nbsp;|&nbsp; 외란이 있는 환경에서 정상상태 오차를 0으로 수렴시키는 완전한 PID 제어기</p>
+
+  <div class="scenario-card">
+    외란(disturbance)이 존재하는 환경에서도 정상상태 오차를 완전히 제거하는
+    <b>PID(비례 + 적분 + 미분) 제어기</b>를 설계해 보세요.
+  </div>
+
+  <h2><span class="num">1</span>문제 상황</h2>
+  <p>
+    PD 제어기는 외란이 없는 환경에서 잘 동작하지만,
+    일정한 <b>외란(힘 bias)</b>이 가해지면 정상상태에서 오차가 남습니다.
+    외란이 있을 때 PD만으로는 평형 위치가 목표값에서 어긋난 채 유지됩니다.
+  </p>
+  <p>
+    <b>I(적분) 항</b>은 오차가 누적될수록 제어 입력을 키워,
+    결국 외란을 정확히 상쇄하는 입력을 자동으로 생성합니다.
+    <code>ki = 0</code>으로 두면 PD 제어기와 동등 — 하위 호환성을 확인할 수 있습니다.
+  </p>
+
+  <div class="fig">
+    <svg viewBox="0 0 760 220" width="100%" style="max-width:720px" xmlns="http://www.w3.org/2000/svg"
+      aria-label="PID vs PD under disturbance">
+      <!-- axes -->
+      <line x1="60" y1="30" x2="60" y2="190" stroke="#c2c9d4" stroke-width="1.5"/>
+      <line x1="60" y1="190" x2="700" y2="190" stroke="#c2c9d4" stroke-width="1.5"/>
+      <text x="40" y="35" fill="#5b6675" font-size="11" text-anchor="middle">y</text>
+      <text x="700" y="205" fill="#5b6675" font-size="11">시간</text>
+      <!-- reference line (y=0) -->
+      <line x1="60" y1="170" x2="700" y2="170" stroke="#c2c9d4" stroke-width="1" stroke-dasharray="6 4"/>
+      <text x="48" y="174" fill="#5b6675" font-size="10" text-anchor="middle">0</text>
+      <!-- disturbance label -->
+      <text x="600" y="22" fill="#b3541e" font-size="12">외란 d = 0.5 (상수)</text>
+      <!-- PD curve: settles above zero (steady state error) -->
+      <path d="M60,50 C130,50 220,158 300,155 C400,152 500,153 700,153"
+            fill="none" stroke="#e08a2e" stroke-width="2" stroke-dasharray="8 4"/>
+      <text x="560" y="146" fill="#e08a2e" font-size="12">PD — 잔류 오차</text>
+      <!-- PD steady-state error indicator -->
+      <line x1="650" y1="153" x2="650" y2="170" stroke="#e08a2e" stroke-width="1.5" stroke-dasharray="3 2"/>
+      <text x="655" y="163" fill="#e08a2e" font-size="10">≈0.25</text>
+      <!-- PID curve: reaches zero -->
+      <path d="M60,50 C130,50 200,175 280,172 C400,169 500,170 700,170"
+            fill="none" stroke="#1f6feb" stroke-width="2.5"/>
+      <text x="420" y="160" fill="#1f6feb" font-size="12">PID — 오차 = 0</text>
+      <!-- start point -->
+      <circle cx="60" cy="50" r="4" fill="#1a2330"/>
+      <text x="72" y="48" fill="#1a2330" font-size="11">y₀ = 1.0</text>
+    </svg>
+    <figcaption>그림 1. 외란 하에서 PD(주황 점선)는 잔류 오차가 남지만, PID(파란 실선)는 I 항이 외란을 보상해 목표값으로 수렴한다.</figcaption>
+  </div>
+
+  <h2><span class="num">2</span>주어진 환경 (Plant)</h2>
+  <p>
+    시뮬레이션 plant는 <code>plant_pid.py</code>의 <code>Plant</code> 클래스입니다.
+    이전 과제 대비 <b>상수 외란</b>이 추가된 버전입니다.
+  </p>
+  <pre>a  ← (u + disturbance − damping · v) / m
+v  ← v + a · dt
+y  ← y + v · dt</pre>
+  <ul>
+    <li>기본 파라미터: <code>dt=0.1 s, y0=1.0 m, damping=1.0, m=1.0</code></li>
+    <li>테스트 외란: <code>disturbance=0.5</code></li>
+    <li>테스트 게인: <code>kp=2.0, kd=1.0, ki=0.5</code>, 시뮬 60초</li>
+  </ul>
+
+  <h2><span class="num">3</span>구현 과제</h2>
+  <p>
+    <code>pid_controller.py</code>의 <code>PIDController.step()</code> 메소드를 구현하세요.
+  </p>
+  <pre>class PIDController:
+    def __init__(self, kp: float, kd: float, ki: float, dt: float): ...
+
+    def step(self, reference: float, measure: float) -> float:
+        """한 스텝의 제어 입력 u 를 반환."""</pre>
+  <table>
+    <tr>
+      <th>인자</th>
+      <th>의미</th>
+    </tr>
+    <tr>
+      <td><code>reference</code></td>
+      <td>목표값</td>
+    </tr>
+    <tr>
+      <td><code>measure</code></td>
+      <td>현재 측정값</td>
+    </tr>
+    <tr>
+      <td><b>반환</b></td>
+      <td>제어 입력 <code>u</code></td>
+    </tr>
+  </table>
+  <ul>
+    <li>내부 상태: <code>prev_error</code> (D 항용), <code>error_sum</code> (I 항용 누적합)</li>
+    <li><b>첫 호출은 D 항 = 0</b> — PD 과제와 동일한 정책</li>
+    <li>누적합은 <code>error_sum += 오차 × dt</code> 형태로 관리합니다</li>
+  </ul>
+
+  <h2><span class="num">4</span>실행 방법</h2>
+  <p>모든 명령은 git 저장소 루트에서 실행합니다.</p>
+
+  <h3>구현 파일</h3>
+  <pre>01_Python_project/release/02_pid/03_pid_controller/pid_controller.py</pre>
+
+  <h3>테스트 — 합격 기준 검증</h3>
+  <pre>uv run pytest 01_Python_project/release/02_pid/03_pid_controller/ -v</pre>
+
+  <h3>시나리오 실행 → record.json 생성 + Rerun viewer 자동 실행</h3>
+  <pre>uv run python 01_Python_project/release/02_pid/03_pid_controller/record_gen.py</pre>
+  <p>
+    <code>record_gen.py</code> 안의 게인을 직접 채워 응답 변화를 비교하세요.
+    release 기본값은 <code>0</code>이라 그대로 실행하면 응답이 나오지 않습니다.
+    JSON만 만들고 viewer를 띄우지 않으려면 <code>--no-viewer</code>를 붙입니다.
+  </p>
+
+  <h3>챕터 전체 viewer로 재생</h3>
+  <pre>uv run python 01_Python_project/release/02_pid/simulator_pid.py 01_Python_project/release/02_pid/03_pid_controller/</pre>
+
+  <h2><span class="num">5</span>합격 기준 <span class="tag">pytest</span></h2>
+  <p>알고리즘 형태는 자유 — 동작 명세(behavioral spec)만 검증합니다.</p>
+  <ol class="pass-list">
+    <li><b>외란 하 폐루프 추적 오차</b> — 외란 0.5, <code>kp=2.0, kd=1.0, ki=0.5</code>, 60초 시뮬 후 tail 평균 <code>|오차| &lt; 0.05</code>, peak <code>|오차| &lt; 1.5</code></li>
+  </ol>
+  <div class="note">
+    <b>참고:</b> I 항 없이 PD만 구현하면 외란 0.5 하에서 잔류 오차가 약 0.25 남아 tail 임계값(0.05)을 초과합니다.
+    <code>error_sum += 오차 × dt</code>에서 <code>dt</code> 곱을 빠뜨려도 적분 단위가 달라져 실패합니다.
+  </div>
+
+  <h2><span class="num">6</span>힌트</h2>
+  <ul>
+    <li>I 항 누적합: <code>error_sum += 오차 × dt</code> — <b><code>dt</code> 곱 누락이 자주 발생합니다.</b></li>
+    <li>D 항 처리는 PD 과제와 동일 (첫 호출 0, 이후 미분 정규화).</li>
+    <li>외란이 있을 때 PD 단독으로 잔류 오차가 생기는 이유를 먼저 demo로 확인해 보면 I 항의 역할이 명확해집니다.</li>
+    <li><code>ki=0</code>으로 설정하면 PD 제어기와 동일하게 동작해야 합니다 — 구현 후 확인해보세요.</li>
+  </ul>
+
+  <h2><span class="num">7</span>제약</h2>
+  <ul>
+    <li><code>plant_pid.py</code> — <b>수정 금지</b> (검증 환경).</li>
+    <li><code>test_pid_controller.py</code> — <b>수정 금지</b> (합격 기준).</li>
+    <li><code>step()</code>의 시그니처 변경 금지.</li>
+    <li>I 항의 anti-windup, leak 등 추가 처리는 본 과제 범위 밖 (단순 누적합만).</li>
+    <li>게인 값은 <code>record_gen.py</code>에서 실험 — <code>test_*.py</code>의 값은 변경 금지.</li>
+  </ul>
+
+  <hr>
+  <p class="footer">
+    IVS — Intelligent Vehicle Systems · Chapter 2 PID · 03_pid_controller<br>
+    구현 파일: <code>pid_controller.py</code> · 검증: <code>pytest</code> · 시각화: Rerun viewer
+  </p>
+
+</body>
+
+</html>

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>과제 — 종방향 속도 PID (Speed PID)</title>
+  <style>
+    :root {
+      --ink: #1a2330;
+      --muted: #5b6675;
+      --line: #d9dee6;
+      --accent: #1f6feb;
+      --accent-soft: #e8f0fe;
+      --warn: #b3541e;
+      --warn-soft: #fdf0e6;
+      --ok: #1f7a3d;
+      --code-bg: #f4f6f9;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      line-height: 1.7;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 28px 96px;
+      background: #fff;
+    }
+
+    h1 {
+      font-size: 1.7rem;
+      margin: 0 0 4px;
+      letter-spacing: -0.01em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.98rem;
+      margin-bottom: 28px;
+    }
+
+    h2 {
+      font-size: 1.18rem;
+      margin: 38px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--line);
+    }
+
+    h2 .num {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.82rem;
+      width: 1.55em;
+      height: 1.55em;
+      line-height: 1.55em;
+      text-align: center;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: 1px;
+    }
+
+    h3 {
+      font-size: 1.02rem;
+      margin: 22px 0 6px;
+    }
+
+    p {
+      margin: 8px 0;
+    }
+
+    code {
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .scenario-card {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 1.02rem;
+    }
+
+    .formula {
+      background: #fbfcfe;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 14px 0;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.96rem;
+    }
+
+    .formula .lbl {
+      color: var(--muted);
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 0.94rem;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--code-bg);
+      font-weight: 600;
+    }
+
+    ul,
+    ol {
+      margin: 8px 0;
+      padding-left: 24px;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    .note {
+      background: var(--warn-soft);
+      border-left: 4px solid var(--warn);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 0.94rem;
+    }
+
+    .note b {
+      color: var(--warn);
+    }
+
+    .fig {
+      margin: 22px 0;
+      text-align: center;
+    }
+
+    .fig figcaption {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-top: 8px;
+    }
+
+    .pass-list li {
+      margin: 8px 0;
+    }
+
+    .pass-list b {
+      color: var(--ok);
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-left: 6px;
+      vertical-align: 2px;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 32px 0;
+    }
+
+    .footer {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>종방향 속도 제어 — Speed PID</h1>
+  <p class="subtitle">Chapter 3 · Vehicle Control / 01_speed_pid &nbsp;|&nbsp; 실차 drag 가 있는 종방향 모델에서 목표 속도 추종</p>
+
+  <div class="scenario-card">
+    자율주행 차량의 <b>종방향 속도 제어</b>를 시작합니다.
+    drag 와 경사 외란이 있는 실차 모델에서 PID 로 목표 속도를 추종하는 제어기를 설계해 보세요.
+  </div>
+
+  <h2><span class="num">1</span>문제 상황</h2>
+  <p>
+    여러분의 차량(<b>ego</b>)은 정지 상태(<code>vx = 0</code>)에서 출발해
+    목표 속도 <code>v_ref = 30 m/s</code>까지 가속하고 이를 유지해야 합니다.
+  </p>
+  <ul>
+    <li>차량에는 <b>drag</b>(공기저항)가 작용해 속도가 오를수록 구동력이 소진됩니다.</li>
+    <li>제어기는 매 스텝마다 <b>가속도 명령</b> <code>u</code>를 출력하고, 차량은 그 명령으로 움직입니다.</li>
+    <li>I 항(적분)이 있어야 drag 외란을 완전히 보상해 정상상태 오차를 없앨 수 있습니다.</li>
+  </ul>
+
+  <div class="fig">
+    <svg viewBox="0 0 820 200" width="100%" style="max-width:780px" xmlns="http://www.w3.org/2000/svg"
+      aria-label="speed pid diagram">
+      <!-- road -->
+      <rect x="0" y="120" width="820" height="55" fill="#eef1f5" />
+      <line x1="0" y1="120" x2="820" y2="120" stroke="#c2c9d4" stroke-width="2" />
+      <line x1="0" y1="175" x2="820" y2="175" stroke="#c2c9d4" stroke-width="2" />
+      <line x1="0" y1="148" x2="820" y2="148" stroke="#fff" stroke-width="3" stroke-dasharray="26 22" />
+
+      <!-- ego vehicle -->
+      <rect x="80" y="127" width="118" height="34" rx="6" fill="#1f6feb" />
+      <rect x="102" y="115" width="64" height="16" rx="5" fill="#1f6feb" />
+      <circle cx="110" cy="163" r="11" fill="#2a2f3a" />
+      <circle cx="170" cy="163" r="11" fill="#2a2f3a" />
+      <text x="139" y="149" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">EGO</text>
+
+      <!-- velocity arrow -->
+      <line x1="198" y1="100" x2="340" y2="100" stroke="#1f6feb" stroke-width="3" />
+      <polygon points="340,100 328,95 328,105" fill="#1f6feb" />
+      <text x="269" y="90" text-anchor="middle" fill="#1f6feb" font-size="13" font-weight="600">vx (현재 속도)</text>
+
+      <!-- reference line -->
+      <line x1="420" y1="60" x2="820" y2="60" stroke="#1f7a3d" stroke-width="2" stroke-dasharray="10 6" />
+      <text x="620" y="52" text-anchor="middle" fill="#1f7a3d" font-size="13" font-weight="600">v_ref = 30 m/s (목표)</text>
+
+      <!-- error arrow -->
+      <line x1="530" y1="100" x2="530" y2="66" stroke="#b3541e" stroke-width="2" />
+      <polygon points="530,62 525,73 535,73" fill="#b3541e" />
+      <text x="570" y="88" fill="#b3541e" font-size="12">오차 = v_ref − vx</text>
+
+      <!-- drag label -->
+      <rect x="430" y="127" width="100" height="30" rx="5" fill="#fff" stroke="#c2c9d4" stroke-width="1.5" />
+      <text x="480" y="147" text-anchor="middle" fill="#5b6675" font-size="12">drag (외란)</text>
+    </svg>
+    <figcaption>그림 1. ego 가 v_ref 를 추종 — drag 외란이 속도 정상상태 오차를 유발, I 항이 이를 보상한다.</figcaption>
+  </div>
+
+  <h2><span class="num">2</span>플랜트 모델</h2>
+  <p>
+    ego 차량은 <code>vehicle_long_speed.py</code>의 <code>VehicleLong</code> 종방향 점질량 모델입니다.
+    매 스텝 dynamics:
+  </p>
+  <pre>x   ← x  + dt·vx + 0.5·dt²·ax
+vx  ← vx + dt·ax
+ax  ← clip( u − C·vx² − g·sinθ ,  −ax_limit, +ax_limit )</pre>
+  <ul>
+    <li><b>drag 계수</b>: <code>Ca = 0.5</code> (속도 제곱에 비례해 가속도를 소진).</li>
+    <li><b>경사</b>: <code>grade = 0</code> (이번 과제는 평지).</li>
+    <li><code>ax_limit = ±2 m/s²</code> — 명령이 크더라도 실제 가속도는 포화됩니다.</li>
+    <li>초기 조건: <code>vx0 = 0</code> (정지 출발).</li>
+  </ul>
+
+  <h2><span class="num">3</span>구현 과제</h2>
+  <p>
+    <code>speed_pid.py</code>의 <code>SpeedPID.step()</code> 메소드를 구현하세요.
+    클래스 골격과 시그니처는 이미 주어져 있습니다.
+  </p>
+  <pre>class SpeedPID:
+    def __init__(self, kp: float, kd: float, ki: float, dt: float): ...
+
+    def step(self, reference: float, measure: float) -> float
+        """한 스텝의 가속도 명령 u 를 반환."""</pre>
+  <table>
+    <tr>
+      <th>인자</th>
+      <th>의미</th>
+    </tr>
+    <tr>
+      <td><code>reference</code></td>
+      <td>목표 속도 [m/s]</td>
+    </tr>
+    <tr>
+      <td><code>measure</code></td>
+      <td>현재 ego 속도 <code>vx</code> [m/s]</td>
+    </tr>
+    <tr>
+      <td><b>반환</b></td>
+      <td>가속도 명령 <code>u</code> — ego 의 <code>VehicleLong.step()</code> 입력</td>
+    </tr>
+  </table>
+  <ul>
+    <li>내부 상태로 <code>prev_error</code>, <code>error_sum</code>을 관리합니다 (PID 표준).</li>
+    <li><b>첫 호출은 D 항 = 0</b> — 직전 오차가 없으므로 미분 항을 계산할 수 없습니다.</li>
+  </ul>
+
+  <h2><span class="num">4</span>실행 방법</h2>
+  <p>모든 명령은 git 저장소 루트에서 실행합니다.</p>
+
+  <h3>구현 파일</h3>
+  <pre>01_Python_project/release/03_vehicle_control/01_speed_pid/speed_pid.py</pre>
+
+  <h3>테스트 — 합격 기준 검증</h3>
+  <pre>uv run pytest 01_Python_project/release/03_vehicle_control/01_speed_pid/ -v</pre>
+
+  <h3>시나리오 실행 → record JSON 생성 + Rerun viewer 자동 실행</h3>
+  <pre>uv run python 01_Python_project/release/03_vehicle_control/01_speed_pid/record_gen.py</pre>
+  <p>
+    게인(<code>kp, kd, ki</code>)은 release 기본값이 <code>0</code>이라 그대로 실행하면 응답이 나오지
+    않습니다 — <code>record_gen.py</code> 안의 게인을 직접 채워 다시 실행하며 응답 변화를 비교하세요.
+    JSON만 만들고 viewer를 띄우지 않으려면 명령 끝에 <code>--no-viewer</code>를 붙입니다.
+  </p>
+
+  <h3>Rerun viewer 재생</h3>
+  <pre>uv run python 01_Python_project/release/03_vehicle_control/simulator_vehicle_control.py 01_Python_project/release/03_vehicle_control/01_speed_pid/</pre>
+
+  <h2><span class="num">5</span>합격 기준 <span class="tag">pytest</span></h2>
+  <p>알고리즘 형태는 자유 — 동작 명세(behavioral spec)만 검증합니다. 검증 명령은 4절 참조.</p>
+  <ol class="pass-list">
+    <li><b>속도 추적 오차</b> — <code>vx0=0, v_ref=30 m/s, kp=1.0, kd=0.0, ki=0.005</code>, 50초 시뮬,
+      tail 평균 <code>|vx 오차| &lt; 0.5 m/s</code>, peak <code>|vx 오차| &lt; 31 m/s</code>.</li>
+  </ol>
+  <div class="note">
+    <b>참고:</b> I 항(<code>ki=0.005</code>)이 drag 외란을 보상해 tail MAE를 작게 만듭니다.
+    단순 구현(<code>return 0</code> 등)은 두 임계값 모두 초과로 차단됩니다.
+  </div>
+
+  <h2><span class="num">6</span>힌트</h2>
+  <ul>
+    <li>02_pid 챕터의 PID 구조와 거의 동일합니다 — 그 구현을 참고하세요.</li>
+    <li><code>error = reference - measure</code> (속도 차이).</li>
+    <li>drag(<code>C·vx²</code>)가 일정 외란 역할을 합니다 → I 항이 잔류 오차를 보상합니다.</li>
+    <li>첫 호출 시 <code>prev_error</code>가 <code>None</code>이면 D 항을 0으로 처리하세요.</li>
+  </ul>
+
+  <h2><span class="num">7</span>제약</h2>
+  <ul>
+    <li><code>vehicle_long_speed.py</code>, <code>test_speed_pid.py</code> — <b>수정 금지</b> (검증 환경).</li>
+    <li><code>step()</code>의 시그니처 변경 금지.</li>
+    <li>게인 값(<code>kp, kd, ki</code>)은 <code>record_gen.py</code>에서 실험 — release 기본값은 0으로
+      초기화되어 있으니 직접 채워 응답을 확인하세요. <code>test_*.py</code>의 값은 변경 금지.</li>
+  </ul>
+
+  <hr>
+  <p class="footer">
+    IVS — Intelligent Vehicle Systems · Chapter 3 Vehicle Control · 01_speed_pid<br>
+    구현 파일: <code>speed_pid.py</code> · 검증: <code>pytest</code> · 시각화: Rerun viewer
+  </p>
+
+</body>
+
+</html>

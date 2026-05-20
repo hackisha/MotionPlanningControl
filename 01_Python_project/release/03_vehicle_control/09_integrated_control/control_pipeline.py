@@ -9,7 +9,7 @@ ego 는 자기 lane (lane2) 을 쭉 따라가되, target 이 ego 의 lane 으로
   3) longitudinal mode 결정 (LongitudinalDecision — target invasion 감지 후 latch)
   4) longitudinal ctrl (speed PID / timegap PD dispatch)
 
-과제 명세는 README.md 참조.
+과제 명세는 problem.html 참조.
 """
 from __future__ import annotations
 

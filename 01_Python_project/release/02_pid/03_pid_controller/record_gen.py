@@ -48,9 +48,9 @@ def main() -> None:
     disturbance = 0.5
 
     # [튜닝] 게인/파라미터 값을 바꿔 응답 변화 비교 — test_*.py 의 값은 변경 X (합격 기준)
-    y_pd, u_pd = _run(kp=2.0, kd=1.0, ki=0.0, dt=dt,
+    y_pd, u_pd = _run(kp=0.0, kd=0.0, ki=0.0, dt=dt,
                       sim_time=sim_time, disturbance=disturbance)
-    y_pid, u_pid = _run(kp=2.0, kd=1.0, ki=0.5, dt=dt,
+    y_pid, u_pid = _run(kp=0.0, kd=0.0, ki=0.0, dt=dt,
                         sim_time=sim_time, disturbance=disturbance)
 
     t = np.arange(steps) * dt

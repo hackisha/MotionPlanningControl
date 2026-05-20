@@ -1,6 +1,6 @@
 """KinematicLateralPID — PID 로 Y reference 추종, 출력 = 조향각 δ (rad).
 
-과제 명세는 README.md 참조.
+과제 명세는 problem.html 참조.
 """
 from __future__ import annotations
 

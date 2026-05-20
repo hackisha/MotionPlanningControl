@@ -33,7 +33,7 @@ def main() -> None:
 
     plant = Plant(dt, y0=1.0)
     # [튜닝] 게인/파라미터 값을 바꿔 응답 변화 비교 — test_*.py 의 값은 변경 X (합격 기준)
-    controller = PController(kp=2.0)
+    controller = PController(kp=0.0)
 
     t = np.arange(steps) * dt
     y = np.zeros(steps)

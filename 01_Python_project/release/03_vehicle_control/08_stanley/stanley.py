@@ -1,6 +1,6 @@
 """Stanley — heading + cross-track 합성 lateral controller (stateless).
 
-과제 명세는 README.md 참조.
+과제 명세는 problem.html 참조.
 """
 from __future__ import annotations
 

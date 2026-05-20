@@ -1,6 +1,6 @@
 """LatPIDFF — local-frame polynomial 기반 lateral PID + 곡률 feedforward.
 
-과제 명세는 README.md 참조.
+과제 명세는 problem.html 참조.
 """
 from __future__ import annotations
 

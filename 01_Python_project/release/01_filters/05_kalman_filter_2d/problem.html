@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>과제 — Kalman Filter 2D (행렬 상태공간)</title>
+  <style>
+    :root {
+      --ink: #1a2330;
+      --muted: #5b6675;
+      --line: #d9dee6;
+      --accent: #1f6feb;
+      --accent-soft: #e8f0fe;
+      --warn: #b3541e;
+      --warn-soft: #fdf0e6;
+      --ok: #1f7a3d;
+      --code-bg: #f4f6f9;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      line-height: 1.7;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 28px 96px;
+      background: #fff;
+    }
+
+    h1 {
+      font-size: 1.7rem;
+      margin: 0 0 4px;
+      letter-spacing: -0.01em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.98rem;
+      margin-bottom: 28px;
+    }
+
+    h2 {
+      font-size: 1.18rem;
+      margin: 38px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--line);
+    }
+
+    h2 .num {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.82rem;
+      width: 1.55em;
+      height: 1.55em;
+      line-height: 1.55em;
+      text-align: center;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: 1px;
+    }
+
+    h3 {
+      font-size: 1.02rem;
+      margin: 22px 0 6px;
+    }
+
+    p {
+      margin: 8px 0;
+    }
+
+    code {
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .scenario-card {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 1.02rem;
+    }
+
+    .formula {
+      background: #fbfcfe;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 14px 0;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.96rem;
+    }
+
+    .formula .lbl {
+      color: var(--muted);
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 0.94rem;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--code-bg);
+      font-weight: 600;
+    }
+
+    ul,
+    ol {
+      margin: 8px 0;
+      padding-left: 24px;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    .note {
+      background: var(--warn-soft);
+      border-left: 4px solid var(--warn);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 0.94rem;
+    }
+
+    .note b {
+      color: var(--warn);
+    }
+
+    .fig {
+      margin: 22px 0;
+      text-align: center;
+    }
+
+    .fig figcaption {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-top: 8px;
+    }
+
+    .pass-list li {
+      margin: 8px 0;
+    }
+
+    .pass-list b {
+      color: var(--ok);
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-left: 6px;
+      vertical-align: 2px;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 32px 0;
+    }
+
+    .footer {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Kalman Filter 2D — 위치와 속도를 동시에 추정하기</h1>
+  <p class="subtitle">Chapter 1 · Filters / 05_kalman_filter_2d &nbsp;|&nbsp; 행렬 상태공간으로 확장된 칼만 필터 (위치만 측정, 위치+속도 추정)</p>
+
+  <div class="scenario-card">
+    위치 센서 하나만 있어도 <b>위치와 속도를 동시에</b> 추정할 수 있습니다.
+    04 의 scalar 칼만을 <b>2차원 상태 벡터 + 행렬 산술</b>로 확장해 보세요.
+  </div>
+
+  <h2><span class="num">1</span>문제 상황</h2>
+  <p>
+    자율주행·로봇 분야에서 가장 흔한 패턴은 "위치는 측정할 수 있지만 속도는 직접 측정이 어렵다" 는 것입니다.
+    칼만 필터는 <b>위치(pos)</b>와 <b>속도(vel)</b>를 한 상태 벡터로 묶고,
+    위치 측정만으로 두 값을 동시에 추정합니다.
+  </p>
+  <p>
+    이 모듈의 <code>KalmanFilter2D</code> 는 시스템 행렬(<code>A</code>, <code>B</code>, <code>C</code>, <code>Q</code>, <code>R</code>)만 바꾸면
+    <b>등속 운동(CV)</b>과 <b>스프링-매스-댐퍼(SMD)</b> 두 시스템을 모두 처리할 수 있습니다.
+    알고리즘 구조는 04 와 완전히 동일하고, 스칼라 연산이 행렬 연산으로 대응됩니다.
+  </p>
+
+  <div class="fig">
+    <svg viewBox="0 0 720 210" width="100%" style="max-width:700px" xmlns="http://www.w3.org/2000/svg"
+      aria-label="Kalman 2D state space diagram">
+      <!-- State vector box -->
+      <rect x="40" y="80" width="140" height="60" rx="8" fill="#f4f6f9" stroke="#d9dee6" stroke-width="1.5"/>
+      <text x="110" y="105" text-anchor="middle" fill="#1a2330" font-size="13" font-weight="700">상태 x ∈ ℝ²</text>
+      <text x="110" y="125" text-anchor="middle" fill="#5b6675" font-size="11">[ pos, vel ]</text>
+      <!-- Arrow to filter -->
+      <line x1="180" y1="110" x2="248" y2="110" stroke="#5b6675" stroke-width="1.5"/>
+      <polygon points="248,110 240,105 240,115" fill="#5b6675"/>
+      <!-- Filter box -->
+      <rect x="250" y="70" width="220" height="80" rx="10" fill="#e8f0fe" stroke="#1f6feb" stroke-width="1.5"/>
+      <text x="360" y="102" text-anchor="middle" fill="#1f6feb" font-size="14" font-weight="700">KalmanFilter2D</text>
+      <text x="360" y="120" text-anchor="middle" fill="#1f6feb" font-size="11">Predict (행렬) → Update</text>
+      <text x="360" y="138" text-anchor="middle" fill="#1f6feb" font-size="10">A@x + B·u  |  K=(P@C)/S</text>
+      <!-- Measurement input -->
+      <line x1="360" y1="30" x2="360" y2="68" stroke="#e05252" stroke-width="2"/>
+      <polygon points="360,68 355,60 365,60" fill="#e05252"/>
+      <text x="360" y="22" text-anchor="middle" fill="#e05252" font-size="12">측정 z (위치만, scalar)</text>
+      <!-- Output -->
+      <line x1="470" y1="110" x2="540" y2="110" stroke="#1f6feb" stroke-width="2"/>
+      <polygon points="540,110 532,105 532,115" fill="#1f6feb"/>
+      <!-- Output box -->
+      <rect x="540" y="80" width="160" height="60" rx="8" fill="#f4f6f9" stroke="#d9dee6" stroke-width="1.5"/>
+      <text x="620" y="105" text-anchor="middle" fill="#1a2330" font-size="13" font-weight="700">추정 x ∈ ℝ²</text>
+      <text x="620" y="125" text-anchor="middle" fill="#5b6675" font-size="11">state[0]=pos, state[1]=vel</text>
+      <!-- Feedback -->
+      <path d="M620,142 Q620,185 360,185 Q100,185 110,142"
+            stroke="#5b6675" stroke-width="1.5" fill="none" stroke-dasharray="6 4"/>
+      <polygon points="110,142 105,152 115,152" fill="#5b6675"/>
+      <text x="360" y="200" text-anchor="middle" fill="#5b6675" font-size="10">다음 스텝 Predict 에 피드백</text>
+    </svg>
+    <figcaption>그림 1. 2D 칼만: 위치 측정 한 개로 위치·속도 2차원 상태를 동시에 추정 — 추정 결과는 다음 스텝으로 피드백.</figcaption>
+  </div>
+
+  <h2><span class="num">2</span>주어진 환경</h2>
+  <p>
+    <code>__init__</code> 은 이미 작성되어 있습니다. 시스템 행렬 <code>A</code>(2×2), <code>B</code>(2,), <code>C</code>(2,),
+    공분산 <code>Q</code>(2×2), <code>R</code>(scalar), 초기 상태 <code>x0</code>, <code>P0</code> 가 그대로 저장됩니다.
+  </p>
+  <p>
+    데모가 두 개입니다.
+  </p>
+  <ul>
+    <li><code>cv_demo.py</code> — 등속 운동(Constant Velocity): 위치만 측정해 위치+속도 추정, 2개 서브플롯.</li>
+    <li><code>smd_demo.py</code> — 스프링-매스-댐퍼 자유 진동: 같은 클래스에 다른 행렬 셋업.</li>
+  </ul>
+  <p>
+    두 데모의 <code>Q</code>, <code>R</code> 기본값은 <code>0</code> — 직접 채워서 실행하세요. <code>test_*.py</code> 의 값은 변경 금지입니다.
+  </p>
+
+  <h2><span class="num">3</span>구현 과제</h2>
+  <p>
+    <code>kalman_filter_2d.py</code> 의 <code>KalmanFilter2D.step()</code> 메소드를 구현하세요.
+    04 의 6줄 알고리즘을 행렬 형태로 옮기는 것이 핵심입니다.
+  </p>
+  <pre>class KalmanFilter2D:
+    def __init__(self, A: np.ndarray, B: np.ndarray, C: np.ndarray,
+                 Q: np.ndarray, R: float,
+                 x0: np.ndarray | None = None,
+                 P0: np.ndarray | None = None): ...
+
+    def step(self, measurement: float, control_input: float) -> np.ndarray
+        """한 번의 Predict + Update 를 수행하고 갱신된 상태 벡터(길이 2)를 반환."""</pre>
+  <table>
+    <tr><th>인자/반환</th><th>의미</th></tr>
+    <tr>
+      <td><code>A</code></td>
+      <td>상태 전이 행렬 (2×2 ndarray)</td>
+    </tr>
+    <tr>
+      <td><code>B</code></td>
+      <td>제어 입력 행렬 (길이 2 1D ndarray)</td>
+    </tr>
+    <tr>
+      <td><code>C</code></td>
+      <td>측정 행렬 (길이 2 1D ndarray) — 위치만 측정 시 <code>[1, 0]</code></td>
+    </tr>
+    <tr>
+      <td><code>Q</code></td>
+      <td>프로세스 노이즈 공분산 (2×2 ndarray)</td>
+    </tr>
+    <tr>
+      <td><code>R</code></td>
+      <td>측정 노이즈 분산 (scalar)</td>
+    </tr>
+    <tr>
+      <td><b>반환</b></td>
+      <td>길이 2 numpy 배열 — <code>state[0]</code> = 위치, <code>state[1]</code> = 속도</td>
+    </tr>
+  </table>
+  <ul>
+    <li>반환은 <b>1D 배열</b> <code>(2,)</code> — column vector <code>(2, 1)</code> 형태로 짜면 인터페이스가 깨집니다.</li>
+  </ul>
+
+  <h2><span class="num">4</span>검증 시나리오</h2>
+  <h3>① 등속 운동 (CV) <span class="tag">cv_demo.py</span></h3>
+  <p>
+    truth: <code>pos = v·t</code> (v=2.0 m/s 등속). 위치만 <code>N(0, 0.5)</code> 노이즈 측정.
+    300 스텝 동안 위치·속도를 동시에 추정 — warm-up(100 스텝) 이후 두 RMS 기준을 통과해야 합니다.
+  </p>
+  <h3>② 스프링-매스-댐퍼 (SMD) <span class="tag">smd_demo.py</span></h3>
+  <p>
+    m=10, k=100, b=2 자유 진동. 위치만 노이즈 측정. 같은 <code>KalmanFilter2D</code> 에 다른 행렬 셋업만 바꿔 사용합니다.
+    이 시나리오는 시각적 확인용 — pytest 합격 기준은 CV 기준만 적용됩니다.
+  </p>
+
+  <h2><span class="num">5</span>실행 방법</h2>
+  <p>모든 명령은 git 저장소 루트에서 실행합니다.</p>
+
+  <h3>구현 파일</h3>
+  <pre>01_Python_project/release/01_filters/05_kalman_filter_2d/kalman_filter_2d.py</pre>
+
+  <h3>테스트 — 합격 기준 검증</h3>
+  <pre>uv run pytest 01_Python_project/release/01_filters/05_kalman_filter_2d/ -v</pre>
+
+  <h3>CV 데모 — 등속 운동 추정 (구현 후)</h3>
+  <pre>uv run python 01_Python_project/release/01_filters/05_kalman_filter_2d/cv_demo.py</pre>
+  <p>위치·속도 서브플롯 2개. <code>Q</code>, <code>R</code> 기본값은 <code>0</code> — 직접 채워서 실행하세요.</p>
+
+  <h3>SMD 데모 — 자유 진동 추정 (구현 후)</h3>
+  <pre>uv run python 01_Python_project/release/01_filters/05_kalman_filter_2d/smd_demo.py</pre>
+
+  <h2><span class="num">6</span>합격 기준 <span class="tag">pytest</span></h2>
+  <p>알고리즘 형태는 자유 — 동작 명세만 검증합니다.</p>
+  <ol class="pass-list">
+    <li><b>CV 추적 RMS</b> — 등속 truth(v=2.0 m/s), 위치만 <code>N(0, 0.5)</code> 노이즈, 300 스텝, warm-up(100 스텝) 이후
+      <b>위치 RMS &lt; 0.5</b>, <b>속도 RMS &lt; 0.3</b>.</li>
+  </ol>
+
+  <h2><span class="num">7</span>힌트</h2>
+  <ul>
+    <li>04 의 6줄 알고리즘을 행렬 형태로 옮기는 것이 핵심입니다 — TODO 주석에 수식이 그대로 제시되어 있습니다.</li>
+    <li>1D 배열 <code>(2,)</code> 사용: <code>np.array([0.0, 0.0])</code> — column vector <code>(2, 1)</code> 아닙니다.</li>
+    <li><code>np.outer(K, C)</code> 가 (2,2) 행렬입니다 — <code>K @ C</code>(inner product, scalar)와 혼동하지 마세요.</li>
+    <li><code>A.T</code>(전치) 빼먹기 쉽습니다 — <code>P_pred = A @ P @ A.T + Q</code>.</li>
+    <li><code>B * u</code>(element-wise broadcast) 와 <code>B @ u</code>(내적, 차원 mismatch 가능) 를 구분하세요.</li>
+  </ul>
+
+  <h2><span class="num">8</span>제약</h2>
+  <ul>
+    <li><code>test_kalman_filter_2d.py</code> — <b>수정 금지</b> (검증 환경).</li>
+    <li><code>step()</code> 의 시그니처 변경 금지.</li>
+    <li>반환값은 반드시 1D numpy 배열 <code>(2,)</code> — column vector <code>(2, 1)</code> 형태 금지.</li>
+    <li><code>cv_demo.py</code> / <code>smd_demo.py</code> 의 <code>Q</code>, <code>R</code> 값은 자유롭게 변경 가능 — <code>test_*.py</code> 의 값은 변경 금지.</li>
+  </ul>
+
+  <hr>
+  <p class="footer">
+    IVS — Intelligent Vehicle Systems · Chapter 1 Filters · 05_kalman_filter_2d<br>
+    구현 파일: <code>kalman_filter_2d.py</code> · 검증: <code>pytest</code> · 시각화: <code>cv_demo.py</code>, <code>smd_demo.py</code> (plotly)
+  </p>
+
+</body>
+</html>

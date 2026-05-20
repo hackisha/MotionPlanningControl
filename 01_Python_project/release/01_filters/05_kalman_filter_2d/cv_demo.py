@@ -22,10 +22,11 @@ def main() -> None:
     A = np.array([[1.0, dt], [0.0, 1.0]])
     B = np.array([0.0, dt])
     C = np.array([1.0, 0.0])
-    Q = np.diag([0.01, 0.05])
-    R = 0.5
+    # [튜닝] Q / R 은 0 으로 초기화 — 학생이 직접 값을 골라 채워야 함.
+    # test_*.py 의 값은 변경 X (합격 기준).
+    Q = np.diag([0.0, 0.0])
+    R = 0.0
 
-    # [튜닝] 게인/파라미터 값을 바꿔 응답 변화 비교 — test_*.py 의 값은 변경 X (합격 기준)
     kf = KalmanFilter2D(A=A, B=B, C=C, Q=Q, R=R)
 
     t = np.arange(n) * dt

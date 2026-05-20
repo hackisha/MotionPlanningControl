@@ -3,7 +3,7 @@ estimation (poly fit) → control (controller.step) 의 통합 모듈.
 
 06/07/08 각 폴더에 controller 별 사본 (`lateral_pipeline_<controller>.py`) 존재 —
 파일명으로 어느 controller 와 짝지어지는지 명시. per-problem self-contained.
-과제 명세는 README.md 참조.
+과제 명세는 problem.html 참조.
 """
 from __future__ import annotations
 

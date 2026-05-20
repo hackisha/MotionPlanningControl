@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>과제 — 기하학적 횡방향 제어 (Pure Pursuit)</title>
+  <style>
+    :root {
+      --ink: #1a2330;
+      --muted: #5b6675;
+      --line: #d9dee6;
+      --accent: #1f6feb;
+      --accent-soft: #e8f0fe;
+      --warn: #b3541e;
+      --warn-soft: #fdf0e6;
+      --ok: #1f7a3d;
+      --code-bg: #f4f6f9;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      line-height: 1.7;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 28px 96px;
+      background: #fff;
+    }
+
+    h1 { font-size: 1.7rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+    .subtitle { color: var(--muted); font-size: 0.98rem; margin-bottom: 28px; }
+
+    h2 {
+      font-size: 1.18rem;
+      margin: 38px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--line);
+    }
+
+    h2 .num {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.82rem;
+      width: 1.55em; height: 1.55em; line-height: 1.55em;
+      text-align: center;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: 1px;
+    }
+
+    h3 { font-size: 1.02rem; margin: 22px 0 6px; }
+    p { margin: 8px 0; }
+
+    code {
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .scenario-card {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 1.02rem;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 0.94rem;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: var(--code-bg); font-weight: 600; }
+
+    ul, ol { margin: 8px 0; padding-left: 24px; }
+    li { margin: 4px 0; }
+
+    .note {
+      background: var(--warn-soft);
+      border-left: 4px solid var(--warn);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 0.94rem;
+    }
+
+    .note b { color: var(--warn); }
+
+    .fig { margin: 22px 0; text-align: center; }
+    .fig figcaption { color: var(--muted); font-size: 0.88rem; margin-top: 8px; }
+
+    .pass-list li { margin: 8px 0; }
+    .pass-list b { color: var(--ok); }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-left: 6px;
+      vertical-align: 2px;
+    }
+
+    hr { border: none; border-top: 1px solid var(--line); margin: 32px 0; }
+    .footer { color: var(--muted); font-size: 0.84rem; margin-top: 40px; }
+  </style>
+</head>
+
+<body>
+
+  <h1>횡방향 제어 — Pure Pursuit (기하학적)</h1>
+  <p class="subtitle">Chapter 3 · Vehicle Control / 07_pure_pursuit &nbsp;|&nbsp; lookahead 점을 향해 한 번의 atan 으로 조향각을 결정하는 stateless 제어기</p>
+
+  <div class="scenario-card">
+    PID 없이 <b>순수 기하학</b>만으로 조향각을 결정하는 Pure Pursuit 제어기를 구현해 보세요.
+    차량의 wheelbase 와 lookahead 거리를 이용해 한 번의 <code>atan</code> 계산으로 δ 를 구합니다.
+  </div>
+
+  <h2><span class="num">1</span>문제 상황</h2>
+  <p>
+    차량은 <code>Y0 = 2 m</code>(도로 밖)에서 출발해 직선 도로(<code>Y = 0</code>, 첫 40 m)로 수렴한 뒤,
+    sine 형태의 곡선 도로로 진입합니다.
+  </p>
+  <ul>
+    <li>제어기는 <b>stateless</b> — 같은 입력이 주어지면 언제나 같은 출력을 냅니다. 내부 상태를 유지하지 않습니다.</li>
+    <li>lookahead 점은 <code>d_lh = lookahead_time × vx</code> 앞 로컬 x 위치에서 다항식으로 구합니다.</li>
+    <li>06 의 PID+FF 와 같은 시나리오·같은 파이프라인을 사용해 두 방식의 특성을 비교할 수 있습니다.</li>
+  </ul>
+
+  <div class="fig">
+    <svg viewBox="0 0 820 220" width="100%" style="max-width:780px" xmlns="http://www.w3.org/2000/svg"
+      aria-label="pure pursuit diagram">
+      <!-- reference path -->
+      <line x1="40" y1="130" x2="280" y2="130" stroke="#1f7a3d" stroke-width="2.5" />
+      <path d="M 280 130 Q 360 60 440 130 Q 520 200 600 130 Q 660 80 740 130"
+            stroke="#1f7a3d" stroke-width="2.5" fill="none" />
+
+      <!-- ego vehicle -->
+      <rect x="36" y="95" width="50" height="18" rx="3" fill="#1f6feb" />
+      <text x="61" y="108" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">EGO</text>
+      <text x="61" y="84" text-anchor="middle" fill="#1f6feb" font-size="11">Y0 = 2 m</text>
+
+      <!-- lookahead circle -->
+      <circle cx="61" cy="104" r="105" fill="none" stroke="#1f6feb" stroke-width="1"
+              stroke-dasharray="5 4" opacity="0.5" />
+
+      <!-- lookahead point -->
+      <circle cx="150" cy="130" r="7" fill="#b3541e" />
+      <text x="150" y="118" text-anchor="middle" fill="#b3541e" font-size="11">lookahead 점</text>
+
+      <!-- arc from ego to lookahead -->
+      <path d="M 61 104 Q 100 104 150 130" stroke="#b3541e" stroke-width="1.5"
+            fill="none" stroke-dasharray="4 3" />
+
+      <!-- d_lh label -->
+      <line x1="61" y1="155" x2="150" y2="155" stroke="#5b6675" stroke-width="1" />
+      <line x1="61" y1="150" x2="61" y2="160" stroke="#5b6675" stroke-width="1" />
+      <line x1="150" y1="150" x2="150" y2="160" stroke="#5b6675" stroke-width="1" />
+      <text x="105" y="170" text-anchor="middle" fill="#5b6675" font-size="11">d_lh = lookahead_time × vx</text>
+
+      <!-- y_lh label -->
+      <line x1="165" y1="104" x2="165" y2="130" stroke="#5b6675" stroke-width="1" />
+      <text x="195" y="120" fill="#5b6675" font-size="11">y_lh</text>
+
+      <!-- delta label -->
+      <path d="M 86 104 Q 110 100 120 115" stroke="#e08a2e" stroke-width="1.5" fill="none" />
+      <text x="122" y="99" fill="#e08a2e" font-size="11">δ (조향각)</text>
+
+      <!-- x axis label -->
+      <text x="700" y="200" fill="#5b6675" font-size="11">40 m</text>
+      <line x1="280" y1="185" x2="280" y2="195" stroke="#5b6675" stroke-width="1" />
+      <text x="280" y="205" text-anchor="middle" fill="#5b6675" font-size="10">곡선 시작</text>
+    </svg>
+    <figcaption>그림 1. Pure Pursuit — 로컬 lookahead 점의 y 편차(y_lh)와 거리(d_lh)로 조향각을 기하학적으로 결정한다.</figcaption>
+  </div>
+
+  <h2><span class="num">2</span>주어진 환경</h2>
+  <p>
+    <code>vehicle_lat_pursuit.py</code>의 <code>VehicleLat</code> kinematic bicycle 모델과
+    <code>lateral_pipeline_pure_pursuit.py</code>의 <code>LateralPipeline</code>이 제공됩니다.
+    파이프라인은 Global2Local → PolynomialFitting → PolynomialValue → <b>여러분의 PurePursuit</b> 순서로 연결합니다.
+  </p>
+  <ul>
+    <li>경로: 직선(<code>Y=0</code>, 0~40 m) + sine(<code>Y = 2·(cos((x−40)/14) − 1)</code>).</li>
+    <li>초기 조건: <code>Y0 = 2 m</code>, <code>vx = 3 m/s</code>, wheelbase <code>L = 4 m</code>.</li>
+    <li>sample 점 수 = 5, 로컬 평가 x = 0.0~4.5 m.</li>
+  </ul>
+
+  <h2><span class="num">3</span>구현 과제</h2>
+  <p>
+    <code>pure_pursuit.py</code>의 <code>PurePursuit.step()</code> 메소드를 구현하세요.
+  </p>
+  <pre>class PurePursuit:
+    def __init__(self, L: float, lookahead_time: float = 1.0): ...
+
+    def step(self, coeff: np.ndarray, vx: float) -> float
+        """조향각 δ (rad) 를 반환 — stateless."""</pre>
+  <table>
+    <tr><th>인자</th><th>의미</th></tr>
+    <tr><td><code>coeff</code></td><td>로컬 프레임 다항식 계수 (degree+1, 1) — 05 의 출력 그대로</td></tr>
+    <tr><td><code>vx</code></td><td>현재 차량 속도 [m/s]</td></tr>
+    <tr><td><b>반환</b></td><td>조향각 δ [rad] — <b>내부 상태 없음</b></td></tr>
+  </table>
+  <ul>
+    <li><b>stateless</b> — <code>__init__</code>에 <code>L</code>과 <code>lookahead_time</code>만 저장하세요. 이전 호출 기억 X.</li>
+    <li>분모 0 방지 상수 <code>ε = 1e-3</code>이 코드에 이미 정의되어 있습니다.</li>
+  </ul>
+
+  <h2><span class="num">4</span>실행 방법</h2>
+  <p>모든 명령은 git 저장소 루트에서 실행합니다.</p>
+
+  <h3>구현 파일</h3>
+  <pre>01_Python_project/release/03_vehicle_control/07_pure_pursuit/pure_pursuit.py</pre>
+
+  <h3>테스트 — 합격 기준 검증</h3>
+  <pre>uv run pytest 01_Python_project/release/03_vehicle_control/07_pure_pursuit/ -v</pre>
+
+  <h3>시나리오 실행 → record JSON 생성 + Rerun viewer 자동 실행</h3>
+  <pre>uv run python 01_Python_project/release/03_vehicle_control/07_pure_pursuit/record_gen.py</pre>
+  <p>
+    파라미터(<code>L, lookahead_time</code>)는 release 기본값이 <code>0</code>이므로
+    <code>record_gen.py</code> 안에서 직접 채우세요.
+    JSON만 생성하려면 <code>--no-viewer</code>를 붙입니다.
+  </p>
+
+  <h3>Rerun viewer 재생</h3>
+  <pre>uv run python 01_Python_project/release/03_vehicle_control/simulator_vehicle_control.py 01_Python_project/release/03_vehicle_control/07_pure_pursuit/</pre>
+
+  <h2><span class="num">5</span>합격 기준 <span class="tag">pytest</span></h2>
+  <ol class="pass-list">
+    <li><b>곡선 경로 추적 오차</b> — <code>L=4, lookahead_time=1.0, vx=3</code>, Y0=2, 30초 pipeline,
+      tail 평균 <code>|lateral err| &lt; 0.4 m</code>, peak <code>&lt; 2.2 m</code>.</li>
+  </ol>
+
+  <h2><span class="num">6</span>힌트</h2>
+  <ul>
+    <li>lookahead 거리: <code>d_lh = lookahead_time × vx</code>. lookahead y: <code>y_lh = poly(coeff, d_lh)</code>.</li>
+    <li>ε(<code>_EPS = 1e-3</code>)는 직진 시점(<code>y_lh ≈ 0</code>) 분모 0 을 방지합니다. <code>atan2</code> 대신 1-인자 <code>atan</code>으로 충분합니다.</li>
+    <li><code>lookahead_time</code>이 클수록 부드럽지만 반응이 느립니다 — <code>1.0초</code>가 합격 기준의 설정값입니다.</li>
+    <li>내부에 <code>prev_error</code> 같은 상태를 만들지 마세요 — 같은 입력 두 번 호출 → 같은 출력이어야 합니다.</li>
+  </ul>
+
+  <h2><span class="num">7</span>제약</h2>
+  <ul>
+    <li><code>vehicle_lat_pursuit.py</code>, <code>lateral_pipeline_pure_pursuit.py</code>, <code>test_pure_pursuit.py</code> — <b>수정 금지</b>.</li>
+    <li><code>step()</code>의 시그니처 변경 금지.</li>
+    <li>05 의 <code>frame_transform.py</code> 수정 금지 — 파이프라인이 sys.path 로 import 합니다.</li>
+    <li><code>record_gen.py</code>에서 파라미터 실험 — <code>test_*.py</code>의 값은 변경 금지.</li>
+  </ul>
+
+  <hr>
+  <p class="footer">
+    IVS — Intelligent Vehicle Systems · Chapter 3 Vehicle Control · 07_pure_pursuit<br>
+    구현 파일: <code>pure_pursuit.py</code> · 검증: <code>pytest</code> · 시각화: Rerun viewer
+  </p>
+
+</body>
+
+</html>

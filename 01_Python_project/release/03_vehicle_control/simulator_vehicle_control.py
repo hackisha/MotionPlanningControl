@@ -12,21 +12,21 @@ viewer 좌측 패널의 Recordings 목록에서 클릭하면 시나리오 전환
 Usage (git root cwd 기준):
     # 1) 인자 없이 - 스크립트 폴더 하위 모든 record*.json 멀티 로드 (기본)
     uv run python \\
-        01_Python_project_refactored/solutions/03_vehicle_control/simulator_vehicle_control.py
+        01_Python_project/solutions/03_vehicle_control/simulator_vehicle_control.py
 
     # 2) 파일 지정 - 그 파일 하나만 로드
     uv run python \\
-        01_Python_project_refactored/solutions/03_vehicle_control/simulator_vehicle_control.py \\
-        01_Python_project_refactored/solutions/03_vehicle_control/06_lat_pid_ff/record_high_speed.json
+        01_Python_project/solutions/03_vehicle_control/simulator_vehicle_control.py \\
+        01_Python_project/solutions/03_vehicle_control/06_lat_pid_ff/record_high_speed.json
 
     # 3) 디렉토리 지정 - 그 폴더 하위 모든 record 멀티 로드
     uv run python \\
-        01_Python_project_refactored/solutions/03_vehicle_control/simulator_vehicle_control.py \\
-        01_Python_project_refactored/solutions/03_vehicle_control/06_lat_pid_ff
+        01_Python_project/solutions/03_vehicle_control/simulator_vehicle_control.py \\
+        01_Python_project/solutions/03_vehicle_control/06_lat_pid_ff
 
     # 카메라 모드 (기본 follow=ego 추종) - ego 시작 위치 고정으로 보려면
     uv run python \\
-        01_Python_project_refactored/solutions/03_vehicle_control/simulator_vehicle_control.py \\
+        01_Python_project/solutions/03_vehicle_control/simulator_vehicle_control.py \\
         --camera fixed
 
 JSON schema (v2; v1 도 계속 재생 가능 - lanes 없으면 생략):
@@ -106,6 +106,8 @@ _LANE_STYLE: dict[str, dict] = {
                "dash_m": 2.0, "gap_m": 2.0},
     "dotted": {"color": (255, 255, 255), "radius": 0.12, "render": "dots",
                "stride_m": 1.0},
+    # boundary: search space 경계선 — 지면에 옅은 회색 선 (3D 벽 대신).
+    "boundary": {"color": (140, 140, 140), "radius": 0.08, "render": "line"},
 }
 
 
@@ -235,13 +237,19 @@ def _eye_controls(data: dict, camera: str) -> rrb.EyeControls3D:
 
 
 def _build_blueprint(data: dict, camera: str) -> rrb.Blueprint:
-    """좌: top-down 3D 뷰(+바닥 그리드), 우: 신호별 시계열 패널."""
+    """좌: top-down 3D 뷰(+바닥 그리드), 우: 신호별 시계열 패널 또는 text 패널."""
     world = rrb.Spatial3DView(
         origin="/world",
         name="Top-down",
         line_grid=rrb.LineGrid3D(visible=True),
         eye_controls=_eye_controls(data, camera),
     )
+    # text_panel 이 있으면 우측은 TextDocumentView (scalars 보다 우선).
+    tp = data.get("text_panel")
+    if tp:
+        entity = tp.get("entity", "info/status")
+        side = rrb.TextDocumentView(origin=f"/{entity}", name="status")
+        return rrb.Blueprint(rrb.Horizontal(world, side, column_shares=[3, 1]))
     scalar_names = [sc["name"] for sc in data.get("scalars", [])]
     if not scalar_names:
         return rrb.Blueprint(world)
@@ -259,15 +267,36 @@ def _log_static_environment(data: dict) -> None:
         rr.log("world/reference_path",
                rr.LineStrips3D([pts], colors=[(80, 80, 80)], radii=[0.05]),
                static=True)
-    # 3D 장애물 — (x, y, radius, height) box 로 렌더. inscribed circle ≈ collision r.
+    # 3D 장애물 — (x, y, radius, height) 원기둥. collision 이 원형이라 시각도 원기둥.
     for i, obs in enumerate(data.get("obstacles_3d", [])):
-        ox = float(obs["x"]); oy = float(obs["y"])
-        radius = float(obs["radius"]); height = float(obs.get("height", 2.0))
+        ox = float(obs["x"])
+        oy = float(obs["y"])
+        radius = float(obs["radius"])
+        height = float(obs.get("height", 0.6))
+        color = tuple(obs.get("color", (140, 140, 140, 130)))  # 반투명 회색 기본
         rr.log(f"world/obstacles_3d/obs_{i}",
-               rr.Boxes3D(centers=[[ox, oy, height / 2.0]],
-                          half_sizes=[[radius, radius, height / 2.0]],
+               rr.Cylinders3D(centers=[[ox, oy, height / 2.0]],
+                              lengths=[height], radii=[radius],
+                              fill_mode=rr.components.FillMode.Solid,
+                              colors=[color]),
+               static=True)
+    # boundary_walls — 탐색 공간 밖 경계벽 (axis-aligned box 4개).
+    for i, wall in enumerate(data.get("boundary_walls", [])):
+        x_min = float(wall["x_min"])
+        x_max = float(wall["x_max"])
+        y_min = float(wall["y_min"])
+        y_max = float(wall["y_max"])
+        height = float(wall.get("height", 1.0))
+        color = tuple(wall.get("color", (140, 140, 140, 130)))  # 반투명 회색 기본
+        cx = (x_min + x_max) / 2.0
+        cy = (y_min + y_max) / 2.0
+        half_x = (x_max - x_min) / 2.0
+        half_y = (y_max - y_min) / 2.0
+        rr.log(f"world/boundary_walls/wall_{i}",
+               rr.Boxes3D(centers=[[cx, cy, height / 2.0]],
+                          half_sizes=[[half_x, half_y, height / 2.0]],
                           fill_mode=rr.components.FillMode.Solid,
-                          colors=[(150, 100, 60, 200)]),
+                          colors=[color]),
                static=True)
     # start / goal marker — 2D 좌표 ([x, y]) 만 받음, 지면 위 작은 sphere 로.
     if "start_marker" in data:
@@ -376,10 +405,13 @@ def _log_dynamic_paths(data: dict) -> None:
     record JSON 의 `dynamic_paths` 항목 (optional, v2+):
         [{"name": ..., "color": [r,g,b(,a)], "radius": float,
           "t": [...],
-          "points_per_t": [[[x,y] or [x,y,z], ...], ...],  # 2D 또는 3D points (line vertices)
+          "points_per_t": [<single-strip 또는 multi-strip>, ...],
           "colors_per_t": [[r,g,b(,a)], ...]}              # optional, per-step color
         ]
-    빈 list 또는 점 1개 이하 인 step 은 entity Clear — viewer 에서 안 보이게.
+    각 `points_per_t[i]` 형태:
+      - single-strip: `[[x,y], [x,y], ...]` 또는 `[[x,y,z], ...]` — 한 step 에 한 라인.
+      - multi-strip:  `[[[x,y], ...], [[x,y], ...]]` — 한 step 에 여러 라인.
+    빈 list 또는 점 1개 이하인 strip 은 무시되고, 모든 strip 이 무효하면 entity Clear.
     `colors_per_t` 가 있으면 매 step color 달라짐.
     """
     for dp in data.get("dynamic_paths", []):
@@ -387,21 +419,51 @@ def _log_dynamic_paths(data: dict) -> None:
         color_static = tuple(dp.get("color", (200, 100, 0)))
         colors_per_t = dp.get("colors_per_t")
         radius = float(dp.get("radius", 0.05))
-        for i, (t, pts) in enumerate(zip(dp["t"], dp["points_per_t"], strict=True)):
+        for i, (t, raw_pts) in enumerate(zip(dp["t"], dp["points_per_t"], strict=True)):
             rr.set_time("sim_time", duration=float(t))
-            arr = np.asarray(pts, dtype=float)
-            if arr.ndim != 2 or arr.shape[0] < 2:
+            # multi-strip 인지 단일-strip 인지 detect (내부 element 가 list-of-list 이면 multi).
+            if (raw_pts and isinstance(raw_pts[0], (list, tuple))
+                    and raw_pts[0] and isinstance(raw_pts[0][0], (list, tuple))):
+                strips_raw = raw_pts
+            else:
+                strips_raw = [raw_pts] if raw_pts else []
+            strips_3d: list[np.ndarray] = []
+            for s in strips_raw:
+                arr = np.asarray(s, dtype=float)
+                if arr.ndim != 2 or arr.shape[0] < 2:
+                    continue
+                if arr.shape[1] == 2:
+                    arr = np.column_stack([arr, np.full(arr.shape[0], 0.05)])
+                elif arr.shape[1] != 3:
+                    continue
+                strips_3d.append(arr)
+            if not strips_3d:
                 rr.log(f"world/dynamic_paths/{name}", rr.Clear(recursive=False))
                 continue
-            if arr.shape[1] == 2:
-                pts3d = np.column_stack([arr, np.full(arr.shape[0], 0.05)])
-            elif arr.shape[1] == 3:
-                pts3d = arr
-            else:
-                continue
             color = tuple(colors_per_t[i]) if colors_per_t is not None else color_static
+            n = len(strips_3d)
             rr.log(f"world/dynamic_paths/{name}",
-                   rr.LineStrips3D([pts3d], colors=[color], radii=[radius]))
+                   rr.LineStrips3D(strips_3d, colors=[color] * n,
+                                   radii=[radius] * n))
+
+
+def _log_text_panel(data: dict) -> None:
+    """우측 텍스트 패널 — 시간축에 따라 갱신되는 TextDocument.
+
+    record JSON 의 `text_panel` 항목 (optional, v2+):
+        {"entity": "info/status",        # default
+         "t": [t0, t1, ...],
+         "text": ["...", "...", ...]}
+    각 t 에서 entity 에 TextDocument 로그. 블루프린트는 `_build_blueprint` 가
+    text_panel 존재 시 TextDocumentView 로 자동 전환.
+    """
+    tp = data.get("text_panel")
+    if not tp:
+        return
+    entity = tp.get("entity", "info/status")
+    for t, txt in zip(tp["t"], tp["text"], strict=True):
+        rr.set_time("sim_time", duration=float(t))
+        rr.log(entity, rr.TextDocument(str(txt)))
 
 
 def _log_dynamic_points(data: dict) -> None:
@@ -476,6 +538,7 @@ def replay_records(record_paths: list[Path], camera: str) -> None:
         _log_scalars(data)
         _log_dynamic_paths(data)
         _log_dynamic_points(data)
+        _log_text_panel(data)
 
         plan.append((rec, _build_blueprint(data, camera), rid,
                      len(data.get("actors", [])),

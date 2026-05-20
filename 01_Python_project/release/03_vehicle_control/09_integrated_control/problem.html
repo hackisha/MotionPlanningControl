@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>과제 — 종·횡 통합 제어 (Integrated Control)</title>
+  <style>
+    :root {
+      --ink: #1a2330;
+      --muted: #5b6675;
+      --line: #d9dee6;
+      --accent: #1f6feb;
+      --accent-soft: #e8f0fe;
+      --warn: #b3541e;
+      --warn-soft: #fdf0e6;
+      --ok: #1f7a3d;
+      --code-bg: #f4f6f9;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      line-height: 1.7;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 28px 96px;
+      background: #fff;
+    }
+
+    h1 { font-size: 1.7rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+    .subtitle { color: var(--muted); font-size: 0.98rem; margin-bottom: 28px; }
+
+    h2 {
+      font-size: 1.18rem;
+      margin: 38px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--line);
+    }
+
+    h2 .num {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.82rem;
+      width: 1.55em; height: 1.55em; line-height: 1.55em;
+      text-align: center;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: 1px;
+    }
+
+    h3 { font-size: 1.02rem; margin: 22px 0 6px; }
+    p { margin: 8px 0; }
+
+    code {
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .scenario-card {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 1.02rem;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 0.94rem;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: var(--code-bg); font-weight: 600; }
+
+    ul, ol { margin: 8px 0; padding-left: 24px; }
+    li { margin: 4px 0; }
+
+    .note {
+      background: var(--warn-soft);
+      border-left: 4px solid var(--warn);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 0.94rem;
+    }
+
+    .note b { color: var(--warn); }
+
+    .fig { margin: 22px 0; text-align: center; }
+    .fig figcaption { color: var(--muted); font-size: 0.88rem; margin-top: 8px; }
+
+    .pass-list li { margin: 8px 0; }
+    .pass-list b { color: var(--ok); }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-left: 6px;
+      vertical-align: 2px;
+    }
+
+    hr { border: none; border-top: 1px solid var(--line); margin: 32px 0; }
+    .footer { color: var(--muted); font-size: 0.84rem; margin-top: 40px; }
+  </style>
+</head>
+
+<body>
+
+  <h1>종·횡 통합 제어 — Integrated Control</h1>
+  <p class="subtitle">Chapter 3 · Vehicle Control / 09_integrated_control &nbsp;|&nbsp; 속도 PID + Time-gap + Pure Pursuit 을 하나의 파이프라인으로 통합</p>
+
+  <div class="scenario-card">
+    01~08 의 모든 구성요소를 <b>하나의 시나리오에서 동시에 동작</b>시키는 통합 문제입니다.
+    직선→곡선 2차선 도로에서 lane 2 를 추종하며 달리다가, 앞 차량이 침범해 오면 종 제어 모드를
+    <b>speed → timegap</b>으로 전환해 안전 거리를 유지하는 파이프라인을 완성해 보세요.
+  </div>
+
+  <h2><span class="num">1</span>문제 상황</h2>
+  <p>
+    도로 구조: 직선(50 m) → R=200 m 좌커브(100 m) → 접선 직선의 2차선 도로.
+  </p>
+  <ul>
+    <li><b>ego</b>: lane 2(오른쪽) 중앙에서 <code>vx = 10 m/s</code> 출발 — lane 2 를 계속 따라갑니다.</li>
+    <li><b>target</b>: lane 1(왼쪽) 50 m 앞, <code>vx = 8 m/s</code> 등속 주행.</li>
+    <li><b>t = 10 s</b>부터 target 이 5초 동안 lane 1 → lane 2(ego 의 lane)로 침범합니다.</li>
+    <li>침범 감지 시 ego 의 종 모드: <code>speed</code>(vx=10 추종) → <code>timegap</code>(τ·v_ego 간격 유지).</li>
+    <li>이후 target 이 원 lane 으로 돌아가도 <code>timegap</code> 모드는 <b>유지(latch)</b>됩니다.</li>
+  </ul>
+
+  <div class="fig">
+    <svg viewBox="0 0 860 240" width="100%" style="max-width:820px" xmlns="http://www.w3.org/2000/svg"
+      aria-label="integrated control scenario">
+      <!-- lane 1 (left, upper) -->
+      <line x1="30" y1="80" x2="460" y2="80" stroke="#c2c9d4" stroke-width="1.5" />
+      <path d="M 460 80 Q 560 80 600 140" stroke="#c2c9d4" stroke-width="1.5" fill="none" />
+      <line x1="600" y1="140" x2="830" y2="140" stroke="#c2c9d4" stroke-width="1.5" />
+
+      <!-- lane center 1 dashes -->
+      <line x1="30" y1="104" x2="450" y2="104" stroke="#fff" stroke-width="2" stroke-dasharray="20 16"
+            style="opacity:0.6" />
+
+      <!-- lane 2 (right, lower) -->
+      <line x1="30" y1="128" x2="460" y2="128" stroke="#c2c9d4" stroke-width="1.5" />
+      <path d="M 460 128 Q 560 128 600 188" stroke="#c2c9d4" stroke-width="1.5" fill="none" />
+      <line x1="600" y1="188" x2="830" y2="188" stroke="#c2c9d4" stroke-width="1.5" />
+
+      <!-- road fill -->
+      <rect x="30" y="80" width="430" height="48" fill="#eef1f5" />
+      <path d="M 460 80 Q 560 80 600 140 L 600 188 Q 560 128 460 128 Z" fill="#eef1f5" />
+      <rect x="600" y="140" width="230" height="48" fill="#eef1f5" />
+
+      <!-- ego vehicle (lane 2) -->
+      <rect x="60" y="132" width="60" height="18" rx="3" fill="#1f6feb" />
+      <text x="90" y="145" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">EGO</text>
+      <text x="90" y="165" text-anchor="middle" fill="#1f6feb" font-size="10">vx=10, lane2</text>
+
+      <!-- target vehicle (lane 1, before invasion) -->
+      <rect x="260" y="84" width="60" height="18" rx="3" fill="#e08a2e" />
+      <text x="290" y="97" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">TARGET</text>
+      <text x="290" y="74" text-anchor="middle" fill="#e08a2e" font-size="10">vx=8, lane1</text>
+
+      <!-- invasion arrow -->
+      <line x1="290" y1="102" x2="290" y2="128" stroke="#b3541e" stroke-width="2" stroke-dasharray="4 3" />
+      <polygon points="290,132 285,121 295,121" fill="#b3541e" />
+      <text x="310" y="120" fill="#b3541e" font-size="10">t=10s 침범</text>
+
+      <!-- speed mode label -->
+      <rect x="52" y="172" width="90" height="20" rx="4" fill="#e8f0fe" stroke="#1f6feb" stroke-width="1" />
+      <text x="97" y="186" text-anchor="middle" fill="#1f6feb" font-size="10">speed mode</text>
+
+      <!-- timegap mode label -->
+      <rect x="350" y="132" width="100" height="20" rx="4" fill="#fdf0e6" stroke="#b3541e" stroke-width="1" />
+      <text x="400" y="146" text-anchor="middle" fill="#b3541e" font-size="10">timegap mode (latch)</text>
+
+      <!-- gap measure -->
+      <line x1="120" y1="215" x2="260" y2="215" stroke="#5b6675" stroke-width="1" />
+      <line x1="120" y1="208" x2="120" y2="222" stroke="#5b6675" stroke-width="1" />
+      <line x1="260" y1="208" x2="260" y2="222" stroke="#5b6675" stroke-width="1" />
+      <text x="190" y="232" text-anchor="middle" fill="#5b6675" font-size="11">종방향 간격 = τ · v_ego (timegap 목표)</text>
+    </svg>
+    <figcaption>그림 1. 2차선 도로에서 ego 가 lane2 추종 + target 침범 시 speed → timegap 모드 전환 (latch).</figcaption>
+  </div>
+
+  <h2><span class="num">2</span>주어진 환경</h2>
+  <p>
+    <code>vehicle_combined.py</code>의 <code>VehicleCombined</code> (종·횡 결합 모델),
+    <code>control_pipeline.py</code>의 <code>Road</code>, <code>EgoState</code>, <code>TargetState</code>,
+    <code>PipelineOutput</code> dataclass 가 제공됩니다.
+    05 의 <code>frame_transform.py</code>는 sys.path 로 import 합니다.
+  </p>
+  <ul>
+    <li>도로: 직선(50 m) → R=200 m 좌커브(100 m) → 접선 직선. <code>Road</code> 객체가 제공.</li>
+    <li>target 의 침범 동작은 test/record_gen 에서 하드코딩 — 학생이 변경하지 않습니다.</li>
+    <li>ego 초기 위치: lane 2 중앙, <code>vx = 10 m/s</code>.</li>
+  </ul>
+
+  <h2><span class="num">3</span>구현 과제</h2>
+  <p>다음 세 파일에 걸쳐 4개 구현 지점이 있습니다.</p>
+
+  <h3>① lateral_controller.py — PurePursuit.step</h3>
+  <pre>class PurePursuit:
+    def __init__(self, L: float, lookahead_time: float = 1.0): ...
+    def step(self, coeff: np.ndarray, vx: float) -> float</pre>
+  <p>07 의 Pure Pursuit 식과 동일합니다 — self-contained 사본입니다.</p>
+
+  <h3>② longitudinal_controller.py — speed_step, timegap_step</h3>
+  <pre>class LongitudinalController:
+    def __init__(self, dt, kp_v, kd_v, kp_g, kd_g, tau_gap=1.5): ...
+    def speed_step(self, v_des: float, v_ego: float) -> float
+    def timegap_step(self, gap: float, v_ego: float, v_target: float) -> float</pre>
+  <table>
+    <tr><th>메소드</th><th>동작</th></tr>
+    <tr><td><code>speed_step</code></td><td>속도 PD — 01 과 동일 구조, <code>err = v_des − v_ego</code></td></tr>
+    <tr><td><code>timegap_step</code></td><td>time-gap PD — <code>desired_gap = tau_gap · v_ego</code>, <code>gap_err = gap − desired_gap</code>, <code>rel_v = v_target − v_ego</code></td></tr>
+  </table>
+  <p><b>주의:</b> <code>timegap_step</code>의 <code>gap</code>은 호출자(<code>ControlPipeline</code>)가 ego heading projection 으로 계산해서 넘깁니다 — 컨트롤러 내부에서 직접 계산하지 마세요.</p>
+
+  <h3>③ control_pipeline.py — LongitudinalDecision.long_mode, ControlPipeline.step</h3>
+  <pre>class LongitudinalDecision:
+    def long_mode(self, t, ego, target) -> str  # "speed" | "timegap" (latch)
+
+class ControlPipeline:
+    def step(self, t, ego, target) -> PipelineOutput</pre>
+  <p><code>ControlPipeline.step</code>은 4단계 시퀀스입니다:</p>
+  <ol>
+    <li><b>perception</b> — ego heading projection 으로 글로벌 ref 샘플링 → Global2Local → PolynomialFitting.</li>
+    <li><b>lateral</b> — <code>LateralController.step(coeff, vx)</code>로 δ 계산.</li>
+    <li><b>decision</b> — <code>LongitudinalDecision.long_mode</code>로 종 모드 결정.</li>
+    <li><b>longitudinal</b> — speed 모드: <code>ax = ax_speed</code>. timegap 모드: <code>ax = min(ax_speed, ax_timegap)</code> (가속 capping).</li>
+  </ol>
+
+  <div class="note">
+    <b>가속 capping:</b> timegap 모드에서도 <code>ax_speed</code>로 상한을 두어야 합니다.
+    gap 이 크면 timegap 식이 가속 명령을 내지만, 침범 중인 target 앞에서 가속하면 안 됩니다.
+    <code>min(ax_speed, ax_timegap)</code>이 더 보수적인(작은) 값을 선택합니다.
+  </div>
+
+  <h2><span class="num">4</span>실행 방법</h2>
+  <p>모든 명령은 git 저장소 루트에서 실행합니다.</p>
+
+  <h3>구현 파일 (3개)</h3>
+  <pre>01_Python_project/release/03_vehicle_control/09_integrated_control/lateral_controller.py
+01_Python_project/release/03_vehicle_control/09_integrated_control/longitudinal_controller.py
+01_Python_project/release/03_vehicle_control/09_integrated_control/control_pipeline.py</pre>
+
+  <h3>테스트 — 합격 기준 검증</h3>
+  <pre>uv run pytest 01_Python_project/release/03_vehicle_control/09_integrated_control/ -v</pre>
+
+  <h3>시나리오 실행 → record JSON 생성 + Rerun viewer 자동 실행</h3>
+  <pre>uv run python 01_Python_project/release/03_vehicle_control/09_integrated_control/record_gen.py</pre>
+  <p>
+    게인(<code>kp_v, kd_v, kp_g, kd_g, tau_gap, lookahead_time</code>)은 release 기본값이 <code>0</code>이므로
+    <code>record_gen.py</code> 안에서 직접 채우세요. JSON만 생성하려면 <code>--no-viewer</code>를 붙입니다.
+    timegap 모드 진입 시 Rerun viewer 에 ego 앞 레이더 파형이 표시됩니다.
+  </p>
+
+  <h3>Rerun viewer 재생</h3>
+  <pre>uv run python 01_Python_project/release/03_vehicle_control/simulator_vehicle_control.py 01_Python_project/release/03_vehicle_control/09_integrated_control/</pre>
+
+  <h2><span class="num">5</span>합격 기준 <span class="tag">pytest</span></h2>
+  <p>sub-controller 단위 수식 검증은 06/07/08 에 위임 — 09 는 decision latch + 통합 closed-loop 만 봅니다.</p>
+  <ol class="pass-list">
+    <li><b>LongitudinalDecision latch</b> — target 침범 감지 후 mode 가 <code>timegap</code>으로 latch (이후 target 이 원 lane 으로 돌아가도 유지).</li>
+    <li><b>timegap 모드 진입</b> — 45초 시뮬 후 <code>decision.invaded == True</code>, 모드 이력에 <code>timegap</code> 존재.</li>
+    <li><b>lane 2 추종</b> — 마지막 5초 tail 평균 <code>|Y_ego − lane2| &lt; 0.4 m</code>.</li>
+    <li><b>감속 발생</b> — vx tail mean <code>&lt; 9.5 m/s</code> (v_des 10 보다 작아짐).</li>
+    <li><b>과감속 없음</b> — vx tail mean <code>&gt; 7.0 m/s</code> (target vx 8 까지 과도 감속 X).</li>
+    <li><b>충돌 없음</b> — min gap <code>&gt; 2 m</code>.</li>
+  </ol>
+
+  <h2><span class="num">6</span>힌트</h2>
+  <ul>
+    <li><code>LongitudinalDecision</code>: <code>target.Y − road.y_center(target.X)</code>가 음수면 ego lane 으로 침범한 것 — <code>self.invaded = True</code>로 latch.</li>
+    <li><code>ControlPipeline</code> perception: ego heading projection으로 샘플링 — <code>x_global = ego.X + cos(ego.Yaw) · sample_xs</code>. 곡선 도로에서도 ref 가 ego 앞에 분포합니다.</li>
+    <li><code>speed_step</code>은 timegap 모드에서도 항상 평가해야 합니다 — 상태를 유지해야 하고, ax capping 의 기준값이 됩니다.</li>
+    <li>다른 lateral controller(Stanley, LatPIDFF)로 교체하려면 <code>lateral_controller.py</code> docstring 의 예시를 참조하세요 — 파일을 수정하지 않고 <code>LateralController</code> adapter 로 wrap 하면 됩니다.</li>
+  </ul>
+
+  <h2><span class="num">7</span>제약</h2>
+  <ul>
+    <li><code>vehicle_combined.py</code> — <b>수정 금지</b> (plant fixture).</li>
+    <li><code>Road</code>, <code>EgoState</code>, <code>TargetState</code>, <code>PipelineOutput</code> dataclass — <b>수정 금지</b> (인터페이스 fixture).</li>
+    <li>05 의 <code>frame_transform.py</code> — <b>수정 금지</b> (sys.path import 전용).</li>
+    <li><code>test_integrated_control_09.py</code>의 target 동작 파라미터(<code>X0=50, t_invasion=10, T_invasion=5</code>) — <b>변경 금지</b> (시나리오 spec).</li>
+    <li>ego 는 <b>lane change 안 함</b> — lane 2 추종만. lane change planner 는 본 과제 범위 밖.</li>
+    <li>게인 값은 <code>record_gen.py</code>에서 실험 — <code>test_*.py</code>의 값은 변경 금지.</li>
+  </ul>
+
+  <hr>
+  <p class="footer">
+    IVS — Intelligent Vehicle Systems · Chapter 3 Vehicle Control · 09_integrated_control<br>
+    구현 파일: <code>lateral_controller.py</code> · <code>longitudinal_controller.py</code> · <code>control_pipeline.py</code>
+    · 검증: <code>pytest</code> · 시각화: Rerun viewer
+  </p>
+
+</body>
+
+</html>

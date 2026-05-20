@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>과제 — Low-Pass Filter (1차 IIR / EMA)</title>
+  <style>
+    :root {
+      --ink: #1a2330;
+      --muted: #5b6675;
+      --line: #d9dee6;
+      --accent: #1f6feb;
+      --accent-soft: #e8f0fe;
+      --warn: #b3541e;
+      --warn-soft: #fdf0e6;
+      --ok: #1f7a3d;
+      --code-bg: #f4f6f9;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      line-height: 1.7;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 28px 96px;
+      background: #fff;
+    }
+
+    h1 {
+      font-size: 1.7rem;
+      margin: 0 0 4px;
+      letter-spacing: -0.01em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.98rem;
+      margin-bottom: 28px;
+    }
+
+    h2 {
+      font-size: 1.18rem;
+      margin: 38px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--line);
+    }
+
+    h2 .num {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.82rem;
+      width: 1.55em;
+      height: 1.55em;
+      line-height: 1.55em;
+      text-align: center;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: 1px;
+    }
+
+    h3 {
+      font-size: 1.02rem;
+      margin: 22px 0 6px;
+    }
+
+    p {
+      margin: 8px 0;
+    }
+
+    code {
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .scenario-card {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 1.02rem;
+    }
+
+    .formula {
+      background: #fbfcfe;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 14px 0;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.96rem;
+    }
+
+    .formula .lbl {
+      color: var(--muted);
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 0.94rem;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--code-bg);
+      font-weight: 600;
+    }
+
+    ul,
+    ol {
+      margin: 8px 0;
+      padding-left: 24px;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    .note {
+      background: var(--warn-soft);
+      border-left: 4px solid var(--warn);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 0.94rem;
+    }
+
+    .note b {
+      color: var(--warn);
+    }
+
+    .fig {
+      margin: 22px 0;
+      text-align: center;
+    }
+
+    .fig figcaption {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-top: 8px;
+    }
+
+    .pass-list li {
+      margin: 8px 0;
+    }
+
+    .pass-list b {
+      color: var(--ok);
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-left: 6px;
+      vertical-align: 2px;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 32px 0;
+    }
+
+    .footer {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Low-Pass Filter — 이전 출력과 현재 입력의 가중 평균</h1>
+  <p class="subtitle">Chapter 1 · Filters / 03_low_pass_filter &nbsp;|&nbsp; 단 하나의 파라미터 α 로 평활 강도를 조절하는 1차 IIR 필터</p>
+
+  <div class="scenario-card">
+    buffer 없이 <b>이전 출력값</b>과 <b>현재 측정값</b>의 가중 평균만으로 신호를 부드럽게 만드는
+    저역 필터(Low-Pass Filter) 를 설계해 보세요.
+  </div>
+
+  <h2><span class="num">1</span>문제 상황</h2>
+  <p>
+    Moving Average 는 최근 N개를 저장하는 buffer 가 필요합니다.
+    Low-Pass Filter(LPF) 는 <b>이전 출력 하나</b>만 기억하면 됩니다.
+    파라미터 <code>α</code>(알파) 하나로 얼마나 과거를 "믿을지"를 조절합니다.
+  </p>
+  <ul>
+    <li><code>α</code> 가 <b>크면</b>(1에 가까울수록) 출력이 천천히 변합니다 — 부드럽고 느린 반응.</li>
+    <li><code>α</code> 가 <b>작으면</b>(0에 가까울수록) 입력을 그대로 통과시킵니다 — 거칠고 빠른 반응.</li>
+  </ul>
+  <p>
+    데모에서는 <code>sin(t)</code> 신호에 잡음을 섞은 뒤 LPF 로 평활화합니다.
+    <code>α</code> 를 바꾸면서 반응 속도와 평활 강도의 트레이드오프를 확인해 보세요.
+  </p>
+
+  <div class="fig">
+    <svg viewBox="0 0 700 170" width="100%" style="max-width:680px" xmlns="http://www.w3.org/2000/svg"
+      aria-label="low pass filter IIR diagram">
+      <!-- noisy input -->
+      <text x="10" y="28" font-size="12" fill="#5b6675">측정 x[n]</text>
+      <polyline points="30,80 60,55 90,100 120,65 150,95 180,60 210,90"
+                stroke="#e05252" stroke-width="1.8" fill="none" opacity="0.8"/>
+      <!-- filter box -->
+      <rect x="230" y="62" width="160" height="44" rx="8" fill="#1f6feb"/>
+      <text x="310" y="89" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">LowPassFilter</text>
+      <!-- arrows -->
+      <line x1="210" y1="84" x2="228" y2="84" stroke="#e05252" stroke-width="2"/>
+      <polygon points="228,84 220,79 220,89" fill="#e05252"/>
+      <line x1="390" y1="84" x2="430" y2="84" stroke="#1f6feb" stroke-width="2"/>
+      <polygon points="430,84 422,79 422,89" fill="#1f6feb"/>
+      <!-- smooth output -->
+      <text x="440" y="28" font-size="12" fill="#5b6675">출력 y[n] (평활)</text>
+      <polyline points="430,84 460,82 500,80 540,79 580,79 620,78"
+                stroke="#1f6feb" stroke-width="2.5" fill="none"/>
+      <!-- alpha label -->
+      <text x="310" y="130" text-anchor="middle" font-size="12" fill="#5b6675">파라미터: α ∈ [0, 1]</text>
+      <!-- feedback arrow -->
+      <path d="M390,106 Q310,140 230,106" stroke="#5b6675" stroke-width="1.5"
+            fill="none" stroke-dasharray="5 3"/>
+      <text x="310" y="152" text-anchor="middle" font-size="11" fill="#5b6675">이전 출력 y[n-1] 피드백</text>
+    </svg>
+    <figcaption>그림 1. LPF 는 이전 출력을 피드백으로 받아 현재 측정값과 α 가중 평균 — buffer 없이 O(1) 메모리.</figcaption>
+  </div>
+
+  <h2><span class="num">2</span>주어진 환경</h2>
+  <p>
+    <code>__init__</code> 은 이미 작성되어 있습니다.
+    <code>self.alpha</code> 와 <code>self.y = None</code> 이 초기화됩니다.
+    <code>self.y</code> 가 <code>None</code> 인 시점이 첫 호출임을 나타냅니다.
+  </p>
+  <p>
+    <code>demo.py</code> 는 <code>sin(t) + N(0, 0.5)</code> 신호 400 표본을 LPF 로 평활화합니다.
+    <code>demo.py</code> 의 <code>alpha</code> 기본값은 <code>0.0</code> (즉시 통과) 입니다 — 직접 채워 응답 변화를 비교하세요.
+  </p>
+
+  <h2><span class="num">3</span>구현 과제</h2>
+  <p>
+    <code>low_pass_filter.py</code> 의 <code>LowPassFilter.step()</code> 메소드를 구현하세요.
+  </p>
+  <pre>class LowPassFilter:
+    def __init__(self, alpha: float = 0.9): ...
+
+    def step(self, x: float) -> float
+        """새 측정값 x 를 받아 평활된 출력을 반환."""</pre>
+  <table>
+    <tr><th>인자/반환</th><th>의미</th></tr>
+    <tr>
+      <td><code>x</code></td>
+      <td>새로 들어온 측정값</td>
+    </tr>
+    <tr>
+      <td><code>alpha</code></td>
+      <td>평활 계수 ∈ [0, 1] — 클수록 부드럽고 느림, 작을수록 거칠고 빠름</td>
+    </tr>
+    <tr>
+      <td><b>반환</b></td>
+      <td>평활된 출력값 (첫 호출에서는 <code>x</code> 그대로)</td>
+    </tr>
+  </table>
+  <ul>
+    <li>첫 호출에서는 <code>self.y</code> 가 <code>None</code> — 이전 출력이 없으므로 <code>x</code> 자체를 반환하고 <code>self.y</code> 를 초기화합니다.</li>
+    <li>이후 호출에서는 이전 출력과 현재 입력을 α 로 가중 평균합니다.</li>
+  </ul>
+
+  <h2><span class="num">4</span>실행 방법</h2>
+  <p>모든 명령은 git 저장소 루트에서 실행합니다.</p>
+
+  <h3>구현 파일</h3>
+  <pre>01_Python_project/release/01_filters/03_low_pass_filter/low_pass_filter.py</pre>
+
+  <h3>테스트 — 합격 기준 검증</h3>
+  <pre>uv run pytest 01_Python_project/release/01_filters/03_low_pass_filter/ -v</pre>
+
+  <h3>데모 — 시각적 확인 (구현 후)</h3>
+  <pre>uv run python 01_Python_project/release/01_filters/03_low_pass_filter/demo.py</pre>
+  <p>
+    <code>demo.py</code> 의 <code>alpha</code> 기본값은 <code>0.0</code> 입니다.
+    원하는 값(예: 0.9)으로 바꿔 실행하며 평활 강도를 조절해 보세요.
+    <code>test_*.py</code> 의 값은 변경 금지입니다.
+  </p>
+
+  <h2><span class="num">5</span>합격 기준 <span class="tag">pytest</span></h2>
+  <p>알고리즘 형태는 자유 — 동작 명세만 검증합니다.</p>
+  <ol class="pass-list">
+    <li><b>상수 입력 안정성</b> — <code>alpha=0.9</code>, <code>step(2.0)</code> 을 200회 반복 후 출력이 <code>2.0</code> 근방 (오차 &lt; 1e-3).</li>
+    <li><b>노이즈 추적 RMS</b> — <code>alpha=0.9</code>, 상수 truth=5 + <code>N(0, 1)</code> 노이즈 1만 표본, warm-up 이후 RMS 오차 &lt; 0.3.</li>
+  </ol>
+
+  <h2><span class="num">6</span>힌트</h2>
+  <ul>
+    <li>이전 출력과 현재 입력의 가중 평균 형태: <code>y = α · y_prev + (1 - α) · x</code></li>
+    <li>α 와 (1-α) 위치에 주의하세요 — 부호/순서가 틀리면 측정 무게가 잘못 적용됩니다.</li>
+    <li><code>self.y is None</code> 인 첫 호출 분기가 필요합니다.</li>
+    <li>α 직관: 크면 부드럽고 느림, 작으면 거칠고 빠름.</li>
+  </ul>
+
+  <h2><span class="num">7</span>제약</h2>
+  <ul>
+    <li><code>test_low_pass_filter.py</code> — <b>수정 금지</b> (검증 환경).</li>
+    <li><code>step()</code> 의 시그니처 변경 금지.</li>
+    <li><code>demo.py</code> 의 <code>alpha</code> 값은 자유롭게 변경 가능 — <code>test_*.py</code> 의 값은 변경 금지.</li>
+  </ul>
+
+  <hr>
+  <p class="footer">
+    IVS — Intelligent Vehicle Systems · Chapter 1 Filters · 03_low_pass_filter<br>
+    구현 파일: <code>low_pass_filter.py</code> · 검증: <code>pytest</code> · 시각화: <code>demo.py</code> (plotly)
+  </p>
+
+</body>
+</html>

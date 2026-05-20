@@ -1,6 +1,6 @@
 """Low-Pass Filter — 1차 IIR (Exponential Moving Average).
 
-과제 명세는 README.md 참조.
+과제 명세는 problem.html 참조.
 """
 from __future__ import annotations
 

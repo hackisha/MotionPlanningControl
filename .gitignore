@@ -16,3 +16,8 @@ dist/
 *.obj
 *.o
 *.exe
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/

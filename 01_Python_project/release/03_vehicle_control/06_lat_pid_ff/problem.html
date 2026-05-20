@@ -165,24 +165,20 @@
       <line x1="40" y1="130" x2="300" y2="130" stroke="#1f7a3d" stroke-width="2.5" stroke-dasharray="0" />
       <text x="170" y="120" text-anchor="middle" fill="#1f7a3d" font-size="12">직선 구간 (Y=0)</text>
 
-      <!-- sine curve section -->
-      <path d="M 300 130 Q 380 60 460 130 Q 540 200 620 130 Q 680 80 740 130"
+      <!-- sine curve section (위상 π/2 부터 — 직선과 접선 연속, 각도 불연속 없음) -->
+      <path d="M 300 130 C 335 130 345 172 380 172 C 415 172 425 130 460 130 C 495 130 505 172 540 172 C 575 172 585 130 620 130 C 655 130 665 172 700 172 C 720 172 730 155 740 155"
             stroke="#1f7a3d" stroke-width="2.5" fill="none" />
-      <text x="540" y="50" text-anchor="middle" fill="#1f7a3d" font-size="12">sine 곡선 구간</text>
-
-      <!-- ego trajectory -->
-      <path d="M 40 100 Q 120 105 200 120 Q 260 128 300 130 Q 380 60 460 130"
-            stroke="#1f6feb" stroke-width="2" fill="none" stroke-dasharray="6 4" />
+      <text x="540" y="60" text-anchor="middle" fill="#1f7a3d" font-size="12">sine 곡선 구간</text>
 
       <!-- ego at start -->
       <rect x="22" y="90" width="46" height="18" rx="3" fill="#1f6feb" />
       <text x="45" y="103" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">EGO</text>
       <text x="45" y="78" text-anchor="middle" fill="#1f6feb" font-size="11">Y0 = 1 m</text>
 
-      <!-- lookahead arrow -->
-      <line x1="380" y1="105" x2="430" y2="90" stroke="#b3541e" stroke-width="1.5" stroke-dasharray="4 3" />
-      <circle cx="430" cy="88" r="5" fill="#b3541e" />
-      <text x="460" y="85" fill="#b3541e" font-size="11">lookahead 점 (y_lh)</text>
+      <!-- lookahead: 자차에서 전방 목표점으로 -->
+      <line x1="68" y1="99" x2="176" y2="130" stroke="#b3541e" stroke-width="1.5" stroke-dasharray="4 3" />
+      <circle cx="180" cy="130" r="5" fill="#b3541e" />
+      <text x="180" y="148" text-anchor="middle" fill="#b3541e" font-size="11">lookahead 점 (y_lh)</text>
 
       <!-- x axis -->
       <line x1="40" y1="185" x2="760" y2="185" stroke="#aaa" stroke-width="1" />

@@ -16,7 +16,7 @@ class ConstantSpacePID:
 - 첫 호출 D=0 정책.
 
 ## 구현 위치
-`01_Python_project_refactored/release/03_vehicle_control/02_constant_space/constant_space_pid.py` 의 `step` 메소드.
+`01_Python_project/release/03_vehicle_control/02_constant_space/constant_space_pid.py` 의 `step` 메소드.
 
 ## 실행
 
@@ -24,12 +24,12 @@ class ConstantSpacePID:
 
 테스트:
 ```bash
-uv run pytest 01_Python_project_refactored/release/03_vehicle_control/02_constant_space/ -v
+uv run pytest 01_Python_project/release/03_vehicle_control/02_constant_space/ -v
 ```
 
 시나리오 실행 → `record.json` 생성 + Rerun viewer 자동 띄움:
 ```bash
-uv run python 01_Python_project_refactored/release/03_vehicle_control/02_constant_space/record_gen.py
+uv run python 01_Python_project/release/03_vehicle_control/02_constant_space/record_gen.py
 ```
 
 > JSON 만 만들고 viewer 안 띄우려면 record_gen 명령에 `--no-viewer` 옵션 추가.

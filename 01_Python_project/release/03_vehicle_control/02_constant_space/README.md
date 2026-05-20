@@ -37,7 +37,7 @@ uv run python 01_Python_project/release/03_vehicle_control/02_constant_space/rec
 
 Rerun viewer 로 재생:
 ```bash
-uv run python 01_Python_project_refactored/release/03_vehicle_control/simulator_vehicle_control.py 01_Python_project_refactored/release/03_vehicle_control/02_constant_space/
+uv run python 01_Python_project/release/03_vehicle_control/simulator_vehicle_control.py 01_Python_project/release/03_vehicle_control/02_constant_space/
 ```
 
 > **시뮬레이터는 챕터 전체용** — 인자 없이 실행하면 `03_vehicle_control/` 하위 모든 시나리오를 한 viewer 에 별도 recording 으로 멀티 로드, viewer 좌측 Recordings 패널에서 클릭 전환. `--camera follow|fixed` 로 초기 카메라 (기본 `follow`).

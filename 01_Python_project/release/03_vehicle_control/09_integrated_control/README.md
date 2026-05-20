@@ -39,26 +39,26 @@ class ControlPipeline:
 ```
 
 ## 구현 위치
-1. `01_Python_project_refactored/release/03_vehicle_control/09_integrated_control/lateral_controller.py` — `PurePursuit.step`
-2. `01_Python_project_refactored/release/03_vehicle_control/09_integrated_control/longitudinal_controller.py` — `speed_step`, `timegap_step`
-3. `01_Python_project_refactored/release/03_vehicle_control/09_integrated_control/control_pipeline.py` — `LongitudinalDecision.long_mode`, `ControlPipeline.step`
+1. `01_Python_project/release/03_vehicle_control/09_integrated_control/lateral_controller.py` — `PurePursuit.step`
+2. `01_Python_project/release/03_vehicle_control/09_integrated_control/longitudinal_controller.py` — `speed_step`, `timegap_step`
+3. `01_Python_project/release/03_vehicle_control/09_integrated_control/control_pipeline.py` — `LongitudinalDecision.long_mode`, `ControlPipeline.step`
 
 ## 실행
 테스트:
 ```bash
-uv run pytest 01_Python_project_refactored/release/03_vehicle_control/09_integrated_control/ -v
+uv run pytest 01_Python_project/release/03_vehicle_control/09_integrated_control/ -v
 ```
 
 시나리오 실행 → `record.json` 생성 + Rerun viewer 자동 띄움:
 ```bash
-uv run python 01_Python_project_refactored/release/03_vehicle_control/09_integrated_control/record_gen.py
+uv run python 01_Python_project/release/03_vehicle_control/09_integrated_control/record_gen.py
 ```
 
 > JSON 만 만들고 viewer 안 띄우려면 record_gen 명령에 `--no-viewer` 옵션 추가.
 
 Rerun viewer 로 재생:
 ```bash
-uv run python 01_Python_project_refactored/release/03_vehicle_control/simulator_vehicle_control.py 01_Python_project_refactored/release/03_vehicle_control/09_integrated_control/
+uv run python 01_Python_project/release/03_vehicle_control/simulator_vehicle_control.py 01_Python_project/release/03_vehicle_control/09_integrated_control/
 ```
 
 ## 합격 기준 (`pytest` 통과)

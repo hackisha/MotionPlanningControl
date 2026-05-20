@@ -18,18 +18,18 @@ class LatPIDFF:
 - 첫 호출 D=0 정책
 
 ## 구현 위치
-`01_Python_project_refactored/release/03_vehicle_control/06_lat_pid_ff/lat_pid_ff.py` 의 `step` 메소드.
+`01_Python_project/release/03_vehicle_control/06_lat_pid_ff/lat_pid_ff.py` 의 `step` 메소드.
 
 ## 실행
 테스트:
 ```bash
-uv run pytest 01_Python_project_refactored/release/03_vehicle_control/06_lat_pid_ff/ -v
+uv run pytest 01_Python_project/release/03_vehicle_control/06_lat_pid_ff/ -v
 ```
 
 두 시나리오 실행 → `record_low_speed.json` / `record_high_speed.json` 생성 + Rerun viewer 자동 띄움 (단일 ego; viewer 의 `lateral_error` 시계열을 보고 FF (kff) 도입 여부/강도 직접 판단. 같은 viewer 에 두 시나리오 누적):
 ```bash
-uv run python 01_Python_project_refactored/release/03_vehicle_control/06_lat_pid_ff/record_gen_low_speed.py
-uv run python 01_Python_project_refactored/release/03_vehicle_control/06_lat_pid_ff/record_gen_high_speed.py
+uv run python 01_Python_project/release/03_vehicle_control/06_lat_pid_ff/record_gen_low_speed.py
+uv run python 01_Python_project/release/03_vehicle_control/06_lat_pid_ff/record_gen_high_speed.py
 ```
 
 > JSON 만 만들고 viewer 안 띄우려면 record_gen 명령에 `--no-viewer` 옵션 추가.
@@ -37,7 +37,7 @@ uv run python 01_Python_project_refactored/release/03_vehicle_control/06_lat_pid
 
 Rerun viewer 로 재생 (두 시나리오 모두 한 viewer 에 별도 recording 으로 로드 — 좌측 Recordings 패널에서 클릭 전환):
 ```bash
-uv run python 01_Python_project_refactored/release/03_vehicle_control/simulator_vehicle_control.py 01_Python_project_refactored/release/03_vehicle_control/06_lat_pid_ff/
+uv run python 01_Python_project/release/03_vehicle_control/simulator_vehicle_control.py 01_Python_project/release/03_vehicle_control/06_lat_pid_ff/
 ```
 
 ## 합격 기준 (`pytest` 통과)

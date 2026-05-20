@@ -14,17 +14,17 @@ class KinematicLateralPID:
 - 첫 호출 D=0 정책.
 
 ## 구현 위치
-`01_Python_project_refactored/release/03_vehicle_control/04_kinematic_lateral/kinematic_lateral_pid.py` 의 `step` 메소드.
+`01_Python_project/release/03_vehicle_control/04_kinematic_lateral/kinematic_lateral_pid.py` 의 `step` 메소드.
 
 ## 실행
 테스트:
 ```bash
-uv run pytest 01_Python_project_refactored/release/03_vehicle_control/04_kinematic_lateral/ -v
+uv run pytest 01_Python_project/release/03_vehicle_control/04_kinematic_lateral/ -v
 ```
 
 시나리오 실행 → `record.json` 생성 + Rerun viewer 자동 띄움:
 ```bash
-uv run python 01_Python_project_refactored/release/03_vehicle_control/04_kinematic_lateral/record_gen.py
+uv run python 01_Python_project/release/03_vehicle_control/04_kinematic_lateral/record_gen.py
 ```
 
 > JSON 만 만들고 viewer 안 띄우려면 record_gen 명령에 `--no-viewer` 옵션 추가.
@@ -32,7 +32,7 @@ uv run python 01_Python_project_refactored/release/03_vehicle_control/04_kinemat
 
 Rerun viewer 로 재생:
 ```bash
-uv run python 01_Python_project_refactored/release/03_vehicle_control/simulator_vehicle_control.py 01_Python_project_refactored/release/03_vehicle_control/04_kinematic_lateral/
+uv run python 01_Python_project/release/03_vehicle_control/simulator_vehicle_control.py 01_Python_project/release/03_vehicle_control/04_kinematic_lateral/
 ```
 
 > **시뮬레이터는 챕터 전체용** — 인자 없이 실행하면 `03_vehicle_control/` 하위 모든 시나리오를 한 viewer 에 별도 recording 으로 멀티 로드, viewer 좌측 Recordings 패널에서 클릭 전환. `--camera follow|fixed` 로 초기 카메라 (기본 `follow`).

@@ -16,7 +16,7 @@ class SpeedPID:
 - 첫 호출 D=0 정책 (PD/PID 모듈과 동일).
 
 ## 구현 위치
-`01_Python_project_refactored/release/03_vehicle_control/01_speed_pid/speed_pid.py` 의 `step` 메소드.
+`01_Python_project/release/03_vehicle_control/01_speed_pid/speed_pid.py` 의 `step` 메소드.
 
 ## 실행
 
@@ -24,12 +24,12 @@ class SpeedPID:
 
 테스트:
 ```bash
-uv run pytest 01_Python_project_refactored/release/03_vehicle_control/01_speed_pid/ -v
+uv run pytest 01_Python_project/release/03_vehicle_control/01_speed_pid/ -v
 ```
 
 시나리오 실행 → `record.json` 생성 + Rerun viewer 자동 띄움:
 ```bash
-uv run python 01_Python_project_refactored/release/03_vehicle_control/01_speed_pid/record_gen.py
+uv run python 01_Python_project/release/03_vehicle_control/01_speed_pid/record_gen.py
 ```
 
 > JSON 만 만들고 viewer 안 띄우려면 record_gen 명령에 `--no-viewer` 옵션 추가.
@@ -37,7 +37,7 @@ uv run python 01_Python_project_refactored/release/03_vehicle_control/01_speed_p
 
 Rerun viewer 로 재생 (시간축 ×1 = 실제 `dt`):
 ```bash
-uv run python 01_Python_project_refactored/release/03_vehicle_control/simulator_vehicle_control.py 01_Python_project_refactored/release/03_vehicle_control/01_speed_pid/
+uv run python 01_Python_project/release/03_vehicle_control/simulator_vehicle_control.py 01_Python_project/release/03_vehicle_control/01_speed_pid/
 ```
 
 시뮬레이터는 챕터 전체용 — 인자 없이 실행하면 `03_vehicle_control/` 하위 모든 `record*.json` 을 **한 viewer 에 별도 recording 으로 로드**, viewer 좌측 Recordings 패널에서 클릭으로 시나리오 전환 (터미널 번호 선택 불필요). 폴더 인자는 그 폴더만, 파일 인자는 그 record 하나만 로드. `--camera follow|fixed` 로 초기 카메라 모드 (기본 `follow`).

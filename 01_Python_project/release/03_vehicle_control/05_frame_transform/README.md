@@ -24,17 +24,17 @@ class PolynomialValue:
 ```
 
 ## 구현 위치
-`01_Python_project_refactored/release/03_vehicle_control/05_frame_transform/frame_transform.py` 의 세 클래스 본문 `# TODO`.
+`01_Python_project/release/03_vehicle_control/05_frame_transform/frame_transform.py` 의 세 클래스 본문 `# TODO`.
 
 ## 실행
 테스트:
 ```bash
-uv run pytest 01_Python_project_refactored/release/03_vehicle_control/05_frame_transform/ -v
+uv run pytest 01_Python_project/release/03_vehicle_control/05_frame_transform/ -v
 ```
 
 데모 (plotly 2-패널 — global / local 변환 전후 직관 확인):
 ```bash
-uv run python 01_Python_project_refactored/release/03_vehicle_control/05_frame_transform/demo.py
+uv run python 01_Python_project/release/03_vehicle_control/05_frame_transform/demo.py
 ```
 
 > 본 모듈은 시간축 없는 정적 데모라 `record_gen.py` + Rerun 시뮬레이터 흐름을 쓰지 않는다 (3D 차량 박스 한 개 띄우는 게 본질을 흐림). 다른 03_vehicle_control 모듈과 다른 점.

@@ -15,19 +15,19 @@ class TimeGapPID:
 - 첫 호출 D=0 정책.
 
 ## 구현 위치
-`01_Python_project_refactored/release/03_vehicle_control/03_time_gap/time_gap_pid.py` 의 `step` 메소드.
+`01_Python_project/release/03_vehicle_control/03_time_gap/time_gap_pid.py` 의 `step` 메소드.
 
 ## 실행
 
 테스트:
 ```bash
-uv run pytest 01_Python_project_refactored/release/03_vehicle_control/03_time_gap/ -v
+uv run pytest 01_Python_project/release/03_vehicle_control/03_time_gap/ -v
 ```
 
 두 시나리오 실행 → `record_stationary.json` / `record_maneuvering.json` 생성 + Rerun viewer 자동 띄움 (같은 viewer 에 두 시나리오 누적):
 ```bash
-uv run python 01_Python_project_refactored/release/03_vehicle_control/03_time_gap/record_gen_stationary.py
-uv run python 01_Python_project_refactored/release/03_vehicle_control/03_time_gap/record_gen_maneuvering.py
+uv run python 01_Python_project/release/03_vehicle_control/03_time_gap/record_gen_stationary.py
+uv run python 01_Python_project/release/03_vehicle_control/03_time_gap/record_gen_maneuvering.py
 ```
 
 > JSON 만 만들고 viewer 안 띄우려면 record_gen 명령에 `--no-viewer` 옵션 추가.
@@ -35,7 +35,7 @@ uv run python 01_Python_project_refactored/release/03_vehicle_control/03_time_ga
 
 Rerun viewer 로 재생 (두 시나리오 모두 한 viewer 에 별도 recording 으로 로드 — 좌측 Recordings 패널에서 클릭 전환):
 ```bash
-uv run python 01_Python_project_refactored/release/03_vehicle_control/simulator_vehicle_control.py 01_Python_project_refactored/release/03_vehicle_control/03_time_gap/
+uv run python 01_Python_project/release/03_vehicle_control/simulator_vehicle_control.py 01_Python_project/release/03_vehicle_control/03_time_gap/
 ```
 
 ## 합격 기준 (`pytest` 통과)

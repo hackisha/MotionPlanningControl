@@ -53,8 +53,16 @@ JSON schema (v2; v1 도 계속 재생 가능 - lanes 없으면 생략):
       "scalars": [
         {"name": "delta", "unit": "rad", "t": [...], "value": [...]},
         ...
+      ],
+      "debug_scalars": [                                  # optional — scalars 와 동일 구조
+        {"name": "lat_error", "unit": "m", "t": [...], "value": [...]},
+        ...
       ]
     }
+
+`debug_scalars` 는 `/debug/<name>` 엔티티로 recording 에 저장되지만 기본 blueprint 에는
+포함되지 않는다 — 학생이 viewer 의 entity 패널에서 `/debug/...` 를 골라 TimeSeriesView 를
+직접 추가하면 볼 수 있다.
 
 렌더링 규약 (Rerun 0.32):
     - 차량은 z=0 평면 위 3D 로 그린다. Boxes2D 는 회전 미지원이라 채워진 +
@@ -399,6 +407,21 @@ def _log_scalars(data: dict) -> None:
             rr.log(f"scalars/{name}", rr.Scalars(float(v)))
 
 
+def _log_debug_scalars(data: dict) -> None:
+    """디버그 신호 — recording 에는 저장되지만 기본 blueprint 에는 포함 안 됨.
+
+    record JSON 의 `debug_scalars` 항목 (optional) — `scalars` 와 동일 구조.
+    `/debug/<name>` 엔티티로 로그되며 `_build_blueprint` 는 이를 위한 view 를 만들지
+    않는다. 학생이 viewer 좌측 entity 패널에서 `/debug/...` 를 골라 TimeSeriesView 를
+    직접 추가하면 분석 가능. 기본 화면은 깔끔하게 유지하면서 필요 시 심화 분석.
+    """
+    for sc in data.get("debug_scalars", []):
+        name = sc["name"]
+        for t, v in zip(sc["t"], sc["value"], strict=True):
+            rr.set_time("sim_time", duration=float(t))
+            rr.log(f"debug/{name}", rr.Scalars(float(v)))
+
+
 def _log_dynamic_paths(data: dict) -> None:
     """시간축에 따라 변하는 line (예: 매 step 의 lookahead polynomial fit, mode-gated radar).
 
@@ -536,6 +559,7 @@ def replay_records(record_paths: list[Path], camera: str) -> None:
         for actor in data.get("actors", []):
             _log_actor(actor)
         _log_scalars(data)
+        _log_debug_scalars(data)
         _log_dynamic_paths(data)
         _log_dynamic_points(data)
         _log_text_panel(data)

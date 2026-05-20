@@ -9,12 +9,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
 import plotly.graph_objects as go
-from kinematic_lateral_pid import KinematicLateralPID
 from plotly.subplots import make_subplots
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from debug_signals import DebugSignals
+from kinematic_lateral_pid import KinematicLateralPID
 from vehicle_lat_kinematic import VehicleLat
 
 
@@ -44,6 +48,7 @@ def main() -> None:
     Y = np.zeros(steps)
     Yaw = np.zeros(steps)
     delta_arr = np.zeros(steps)
+    dbg = DebugSignals()  # 디버그 신호 수집기 — 신호 추가/삭제는 아래 dbg.add() 한 줄
     for i in range(steps):
         t[i] = i * dt
         X[i] = plant.X
@@ -51,6 +56,13 @@ def main() -> None:
         Yaw[i] = plant.Yaw
         delta = pid.step(reference_Y=Y_ref, ego_Y=plant.Y)
         delta_arr[i] = delta
+        # 디버그 신호 — 주석을 풀고 원하는 값/식을 넣으세요.
+        # 추가·삭제·수정은 이 dbg.add() 의 kwarg 한 줄로 끝납니다.
+        dbg.add(
+            # debug1=<신호 값 또는 식>,
+            # debug2=<신호 값 또는 식>,
+            # debug3=<신호 값 또는 식>,
+        )
         plant.step(delta, vx)
 
     # plotly (opt-in: --plot) --------------------------------------------

@@ -21,6 +21,8 @@ from plotly.subplots import make_subplots
 
 # 05_frame_transform 의 구현을 sys.path 로 직접 import (frame_transform 패턴).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "05_frame_transform"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from debug_signals import DebugSignals
 from frame_transform import Global2Local, PolynomialFitting, PolynomialValue
 from lateral_pipeline_pure_pursuit import LateralPipeline  # 본 폴더 (per-problem 사본)
 from pure_pursuit import PurePursuit
@@ -80,6 +82,7 @@ def main() -> None:
     fit_curves: list[list[list[float]]] = []
     lookahead_pts: list[list[float]] = []
     lookahead_x = vx * pp.lookahead_time
+    dbg = DebugSignals()  # 디버그 신호 수집기 — 신호 추가/삭제는 아래 dbg.add() 한 줄
     for i in range(steps):
         X[i] = plant.X
         Y[i] = plant.Y

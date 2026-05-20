@@ -23,6 +23,8 @@ from plotly.subplots import make_subplots
 
 # 05_frame_transform 의 구현을 그대로 import (폴더명이 숫자 prefix 라 sys.path 추가 필요).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "05_frame_transform"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from debug_signals import DebugSignals
 from frame_transform import Global2Local, PolynomialFitting, PolynomialValue
 from lat_pid_ff import LatPIDFF
 from lateral_pipeline_pid_ff import LateralPipeline
@@ -85,6 +87,7 @@ def main() -> None:
     prev_err: float | None = None
     err_sum: float = 0.0
     lookahead_x = vx * controller.lookahead_time
+    dbg = DebugSignals()  # 디버그 신호 수집기 — 신호 추가/삭제는 아래 dbg.add() 한 줄
     for i in range(steps):
         t[i] = i * DT
         X[i] = plant.X

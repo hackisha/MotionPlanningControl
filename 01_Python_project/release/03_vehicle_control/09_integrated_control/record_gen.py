@@ -16,9 +16,6 @@ LongitudinalController, LateralController 의 본문을 짜야 동작.
 
 다른 lateral controller (Stanley/LatPIDFF) 로 교체: lateral_controller.py 의 docstring 참조.
 재생: 03_vehicle_control/simulator_vehicle_control.py 참조.
-
-실행 전 `lateral_controller.py` / `longitudinal_controller.py` / `control_pipeline.py` 의
-`# TODO` 를 구현해야 동작합니다 — 구현 전이면 NotImplementedError.
 """
 from __future__ import annotations
 
@@ -31,6 +28,7 @@ import numpy as np
 
 # 05_frame_transform 의 구현을 sys.path 로 직접 import (frame_transform 패턴).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "05_frame_transform"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from control_pipeline import (
     ControlPipeline,
     EgoState,
@@ -38,6 +36,7 @@ from control_pipeline import (
     Road,
     TargetState,
 )
+from debug_signals import DebugSignals
 from frame_transform import Global2Local, PolynomialFitting, PolynomialValue
 from lateral_controller import LateralController, PurePursuit
 from longitudinal_controller import LongitudinalController
@@ -120,11 +119,11 @@ def main() -> None:
 
     sim_time = 45.0
     road = Road(R=200.0)
-    # [튜닝] 게인/lookahead 값을 바꿔 응답 변화 비교 — test_*.py 의 값은 변경 X (합격 기준)
-    pp = PurePursuit(L=4.0, lookahead_time=0.0)
+    pp = PurePursuit(L=4.0, lookahead_time=1.0)
     lat_ctrl = LateralController(pp, lookahead_x_fn=lambda vx: vx * pp.lookahead_time)
+    # [튜닝] 게인 값 변경 가능 — test_*.py 의 값은 변경 X (합격 기준)
     long_ctrl = LongitudinalController(
-        dt=DT, kp_v=0.0, kd_v=0.0, kp_g=0.0, kd_g=0.0, tau_gap=0.0,
+        dt=DT, kp_v=0.5, kd_v=0.0, kp_g=2.0, kd_g=3.0, tau_gap=1.5,
     )
     decision = LongitudinalDecision(road)
     pipe = ControlPipeline(
@@ -152,6 +151,7 @@ def main() -> None:
     X_tgt = np.zeros(steps); Y_tgt = np.zeros(steps); Yaw_tgt = np.zeros(steps)
     gap_arr = np.zeros(steps); mode_id_arr = np.zeros(steps)  # 0=speed, 1=timegap
     fit_curves: list[list[list[float]]] = []
+    dbg = DebugSignals()  # 디버그 신호 수집기 — 신호 추가/삭제는 아래 dbg.add() 한 줄
     lookahead_pts: list[list[float]] = []
 
     for i in range(steps):
@@ -166,6 +166,14 @@ def main() -> None:
         gap_arr[i] = (np.cos(ego.Yaw) * (tgt.X - ego.X)
                       + np.sin(ego.Yaw) * (tgt.Y - ego.Y))
         mode_id_arr[i] = 1.0 if out.long_mode == "timegap" else 0.0
+        # 디버그 신호 — 주석을 풀고 원하는 값/식을 넣으세요.
+        # 추가·삭제·수정은 이 dbg.add() 의 kwarg 한 줄로 끝납니다.
+        # (예: debug1=ego.Y - road.lane2_center(ego.X))
+        dbg.add(
+            # debug1=<신호 값 또는 식>,
+            # debug2=<신호 값 또는 식>,
+            # debug3=<신호 값 또는 식>,
+        )
         # viz: fit + lookahead → global frame
         cos_y, sin_y = np.cos(plant.Yaw), np.sin(plant.Yaw)
         rot = np.array([[cos_y, -sin_y], [sin_y, cos_y]])
@@ -175,6 +183,7 @@ def main() -> None:
         lookahead_pts.append(lh_global.tolist())
         plant.step(out.delta, out.ax)
 
+    # 도로 line — ego 진행 범위 cover
     x_lo = float(min(X_ego.min(), X_tgt.min())) - 5.0
     x_hi = float(max(X_ego.max(), X_tgt.max())) + 10.0
     ref_x = np.arange(x_lo, x_hi, 0.5)
@@ -209,9 +218,12 @@ def main() -> None:
             {"name": "ax_ego", "unit": "m/s²", "t": t.tolist(), "value": ax_arr.tolist()},
             {"name": "delta", "unit": "rad", "t": t.tolist(), "value": delta_arr.tolist()},
             {"name": "gap_long", "unit": "m", "t": t.tolist(), "value": gap_arr.tolist()},
-            {"name": "long_mode (0=speed, 1=timegap)", "unit": "-",
+            {"name": "long_mode", "unit": "-",
              "t": t.tolist(), "value": mode_id_arr.tolist()},
         ],
+        # 디버그 신호 — 기본 blueprint 미포함. viewer 의 entity 패널에서 /debug/<name>
+        # 을 골라 TimeSeriesView 를 직접 추가하면 심화 분석 가능.
+        "debug_scalars": dbg.to_debug_scalars(t),
         "dynamic_paths": [
             {"name": "fit", "color": [255, 150, 0, 200], "radius": 0.08,
              "t": t.tolist(), "points_per_t": fit_curves},

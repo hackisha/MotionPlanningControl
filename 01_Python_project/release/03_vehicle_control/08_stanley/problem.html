@@ -161,9 +161,9 @@
   <div class="fig">
     <svg viewBox="0 0 820 220" width="100%" style="max-width:780px" xmlns="http://www.w3.org/2000/svg"
       aria-label="stanley diagram">
-      <!-- reference path -->
+      <!-- reference path (직선 → sine, 위상 π/2 부터 접선 연속) -->
       <line x1="40" y1="140" x2="300" y2="140" stroke="#1f7a3d" stroke-width="2.5" />
-      <path d="M 300 140 Q 380 70 460 140 Q 540 210 620 140 Q 680 90 740 140"
+      <path d="M 300 140 C 335 140 345 182 380 182 C 415 182 425 140 460 140 C 495 140 505 182 540 182 C 575 182 585 140 620 140 C 655 140 665 182 700 182 C 720 182 730 165 740 165"
             stroke="#1f7a3d" stroke-width="2.5" fill="none" />
       <text x="170" y="130" text-anchor="middle" fill="#1f7a3d" font-size="12">경로 (Y=0 → sine)</text>
 
@@ -177,10 +177,6 @@
 
       <!-- closest point on path -->
       <circle cx="125" cy="140" r="5" fill="#1f7a3d" />
-
-      <!-- delta label -->
-      <path d="M 150 114 Q 165 108 170 118" stroke="#5b6675" stroke-width="1.5" fill="none" />
-      <text x="175" y="107" fill="#5b6675" font-size="11">δ (조향각)</text>
     </svg>
     <figcaption>그림 1. Stanley — 현재 위치의 heading 오차(ψ_e)와 cross-track 오차(e_y)를 합성해 δ 를 결정한다.</figcaption>
   </div>

@@ -26,6 +26,12 @@ JSON schema (search):
       "debug_scalars": [                                        # optional, iteration 별 시계열
         {"name": str, "unit": str, "t": [...], "value": [...]}  # t = iteration
       ],
+      "ellipses": [                                             # optional (Informed RRT*)
+        {"iteration": int, "points": [[x, y], ...]}             # informed 타원, iteration 별
+      ],
+      "round_paths": [                                          # optional (Informed RRT*)
+        {"iteration": int, "points": [[x, y], ...]}             # round 별 채택 경로, iteration 별
+      ],
       "weight": float,   # optional, A* heuristic 가중치 (status meta)
       "seed":   int,     # optional, sampling 알고리즘 seed (status meta)
       "eta":    float    # optional, RRT steer 한 step (status meta)
@@ -41,6 +47,10 @@ JSON schema (search):
 - /world/current:   직전 step 에 expand 한 노드 (주황)
 - /world/tree:      RRT 등 sampling-tree 의 edge 누적 (옅은 파랑 LineStrips2D)
 - /world/path:      탐색 완료 후 최종 path (마젠타 LineStrips2D)
+- /world/ellipse:   Informed RRT* 의 informed 타원 (반투명 보라). round 시작 iteration 에
+                    갱신돼 그 round 동안 계속 표시됨.
+- /world/round_path: Informed RRT* 의 round 별 채택 경로 (밝은 청록 하이라이트).
+                    round 가 바뀌면 그 round 의 경로로 갱신, 다음 round 까지 표시됨.
 - /debug/<name>:    debug_scalars (optional) — 'iteration' 타임라인의 디버그 시계열.
                     기본 blueprint 미포함 — entity 패널에서 TimeSeriesView 직접 추가.
 
@@ -69,8 +79,10 @@ _CLOSED_COLOR = (255, 220, 80, 110)
 _OPEN_COLOR = (90, 220, 90, 220)
 _CURRENT_COLOR = (255, 130, 0)
 _PATH_COLOR = (220, 70, 220)
-_TREE_COLOR = (110, 150, 220, 180)  # 옅은 파랑 — RRT 의 tree edges
+_TREE_COLOR = (110, 150, 220, 90)   # 옅은 파랑 — RRT 의 tree edges (반투명)
 _SPACE_COLOR = (150, 156, 166)      # 옅은 회색 — 탐색 공간 경계
+_ELLIPSE_COLOR = (150, 90, 220, 95)  # 반투명 보라 — informed 타원 (09)
+_ROUND_PATH_COLOR = (40, 215, 205)   # 밝은 청록 — round 별 채택 경로 하이라이트 (09)
 
 _REF_EXTENT = 60.0  # 04/05/07 grid 크기 — 아래 marker radii 가 이 extent 에 맞춰짐
 
@@ -209,6 +221,8 @@ def _log_search_rrt(data: dict) -> None:
     교차 오염 없음.
     """
     s = _radius_scale(data)
+    # informed round 경계 (09) — status 의 round 표시용. 그 외엔 빈 list.
+    round_starts = sorted(int(e["iteration"]) for e in data.get("ellipses", []))
     frames: list[dict] = data.get("frames", [])
     n_frames = len(frames)
     weight = data.get("weight")
@@ -239,9 +253,13 @@ def _log_search_rrt(data: dict) -> None:
                    rr.Points2D([node], colors=[_CURRENT_COLOR],
                                radii=[0.5 * s]))
             lines = [f"step {i + 1} / {n_frames}",
-                     f"iteration: {it}",
-                     f"tree nodes: {len(closed)}",
-                     f"tree edges: {len(tree_edges)}"]
+                     f"iteration: {it}"]
+            if round_starts:
+                cur_round = sum(1 for rs in round_starts if rs <= int(it)) - 1
+                lines.append(
+                    f"inform round: {cur_round + 1} / {len(round_starts)}")
+            lines += [f"tree nodes: {len(closed)}",
+                      f"tree edges: {len(tree_edges)}"]
             if weight is not None:
                 lines.append(f"weight: {weight}")
             if seed is not None:
@@ -272,6 +290,50 @@ def _log_debug(data: dict) -> None:
         for it, value in zip(sc["t"], sc["value"], strict=True):
             rr.set_time("iteration", sequence=int(it))
             rr.log(f"debug/{name}", rr.Scalars(float(value)))
+
+
+def _log_ellipses(data: dict) -> None:
+    """ellipses (optional, Informed RRT*) — round 별 informed 타원.
+
+    record 의 `ellipses` 항목 (`{iteration, points}`) 을 `/world/ellipse` 엔티티로
+    'iteration' 타임라인에 반투명 선으로 로그한다. round 시작 iteration 에 한 번
+    로그하면 다음 round 의 타원이 덮어쓸 때까지 persist — 그 round 동안 계속 보인다.
+    높은 `draw_order` 로 tree·node 위에 항상 그려진다 (매 step 재로그 불필요).
+    points 가 비면 (round 0, 타원 없음) Clear.
+    """
+    s = _radius_scale(data)
+    for e in data.get("ellipses", []):
+        rr.set_time("iteration", sequence=int(e["iteration"]))
+        pts = e.get("points", [])
+        if pts:
+            rr.log("world/ellipse",
+                   rr.LineStrips2D([np.array(pts, dtype=float)],
+                                   colors=[_ELLIPSE_COLOR], radii=[0.07 * s],
+                                   draw_order=1000.0))  # tree·node 위에 항상
+        else:
+            rr.log("world/ellipse", rr.Clear(recursive=False))
+
+
+def _log_round_paths(data: dict) -> None:
+    """round_paths (optional, Informed RRT*) — round 별 채택 경로 하이라이트.
+
+    record 의 `round_paths` (`{iteration, points}`) 를 `/world/round_path`
+    엔티티로 'iteration' 타임라인에 밝은 청록 선으로 로그한다. round 시작
+    iteration 에 한 번 로그하면 다음 round 의 경로가 덮어쓸 때까지 persist —
+    그 round 동안 현재 informed 타원과 같은 경로(타원 장축)가 강조된다. 높은
+    `draw_order` 로 tree·node 위에 그려진다. points 가 비면 (round 0) Clear.
+    """
+    s = _radius_scale(data)
+    for rp in data.get("round_paths", []):
+        rr.set_time("iteration", sequence=int(rp["iteration"]))
+        pts = rp.get("points", [])
+        if pts:
+            rr.log("world/round_path",
+                   rr.LineStrips2D([np.array(pts, dtype=float)],
+                                   colors=[_ROUND_PATH_COLOR], radii=[0.16 * s],
+                                   draw_order=900.0))  # tree·node 위
+        else:
+            rr.log("world/round_path", rr.Clear(recursive=False))
 
 
 def _build_blueprint(data: dict) -> rrb.Blueprint:
@@ -305,6 +367,8 @@ def replay_search(record_paths: list[Path]) -> None:
         else:
             _log_search(data)
         _log_debug(data)
+        _log_ellipses(data)
+        _log_round_paths(data)
         plan.append((rec, _build_blueprint(data), rid))
 
     plan[0][0].spawn(default_blueprint=plan[0][1])

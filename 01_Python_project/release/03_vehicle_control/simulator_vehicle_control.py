@@ -40,6 +40,7 @@ JSON schema (v2; v1 도 계속 재생 가능 - lanes 없으면 생략):
           "name": "ego" | "target",
           "L": float,  "W": float,             # vehicle box dims (optional)
           "color": [r, g, b] or [r, g, b, a],  # optional
+          "trail": bool,                       # optional, default true (false=궤적선 끔)
           "t":   [t0, t1, ...],
           "X":   [...], "Y": [...], "Yaw": [...],   # Yaw in rad
         },
@@ -47,7 +48,8 @@ JSON schema (v2; v1 도 계속 재생 가능 - lanes 없으면 생략):
       ],
       "reference_path": {"X": [...], "Y": [...]},        # optional
       "lanes": [                                         # optional (v2+)
-        {"X": [...], "Y": [...], "kind": "edge" | "lane" | "center"},
+        {"X": [...], "Y": [...], "kind": "edge" | "lane" | "center",
+         "color": [r, g, b(, a)]},                       # optional, kind 기본색 덮어씀
         ...
       ],
       "scalars": [
@@ -320,7 +322,7 @@ def _log_static_environment(data: dict) -> None:
     for i, lane in enumerate(data.get("lanes", [])):
         kind = lane.get("kind", "lane")
         style = _LANE_STYLE.get(kind, _LANE_STYLE["lane"])
-        color = style["color"]
+        color = tuple(lane.get("color", style["color"]))   # record 가 color 덮어쓰기 가능
         radius = style["radius"]
         render = style.get("render", "line")
         xs = np.asarray(lane["X"], dtype=float)
@@ -361,11 +363,15 @@ def _log_static_environment(data: dict) -> None:
 
 
 def _log_actor(actor: dict) -> None:
-    """한 actor 의 매 프레임: 채워진 차체 + 바퀴 4개 + heading + 누적 trail."""
+    """한 actor 의 매 프레임: 채워진 차체 + 바퀴 4개 + heading + 누적 trail.
+
+    `actor["trail"]` 가 False 면 누적 trail(지나온 궤적선)을 그리지 않는다 (기본 True).
+    """
     name = actor["name"]
     L = float(actor.get("L", DEFAULT_L))
     W = float(actor.get("W", DEFAULT_W))
     color = tuple(actor.get("color", DEFAULT_COLOR))
+    draw_trail = actor.get("trail", True)
     body_half = [L / 2.0, W / 2.0, DEFAULT_H / 2.0]
     trail: list[list[float]] = []
     for t, x, y, yaw in zip(actor["t"], actor["X"], actor["Y"], actor["Yaw"],
@@ -391,11 +397,13 @@ def _log_actor(actor: dict) -> None:
                            vectors=[[0.6 * L * np.cos(yaw),
                                      0.6 * L * np.sin(yaw), 0.0]],
                            colors=[color], radii=[0.08]))
-        # 누적 trail
-        trail.append([x, y, 0.02])
-        if len(trail) >= 2:
-            rr.log(f"world/actors/{name}/trail",
-                   rr.LineStrips3D([np.array(trail)], colors=[color], radii=[0.04]))
+        # 누적 trail (actor["trail"] == False 면 생략)
+        if draw_trail:
+            trail.append([x, y, 0.02])
+            if len(trail) >= 2:
+                rr.log(f"world/actors/{name}/trail",
+                       rr.LineStrips3D([np.array(trail)], colors=[color],
+                                       radii=[0.04]))
 
 
 def _log_scalars(data: dict) -> None:

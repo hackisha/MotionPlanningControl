@@ -270,6 +270,19 @@
   <h3>Rerun viewer 재생</h3>
   <pre>uv run python 01_Python_project/release/03_vehicle_control/simulator_vehicle_control.py 01_Python_project/release/03_vehicle_control/07_pure_pursuit/</pre>
 
+  <h3>디버그 신호 — 심화 분석 (선택)</h3>
+  <p>
+    <code>record_gen.py</code> 의 <code>dbg.add(...)</code> 블록에는 <code>debug1/2/3</code> 주석
+    placeholder 가 준비돼 있습니다. 주석을 풀고 분석하고 싶은 값·식(예: 추적 오차, 내부 상태)을
+    채우면 그 신호가 record 에 함께 저장됩니다 — 신호 추가·삭제·수정은 이 <code>dbg.add()</code>
+    호출의 kwarg 한 줄로 끝납니다.
+  </p>
+  <p>
+    디버그 신호는 viewer 기본 화면에는 나타나지 않습니다 — Rerun viewer 좌측 entity 패널에서
+    <code>/debug/&lt;이름&gt;</code> 항목을 골라 TimeSeriesView 를 직접 추가하면 시계열로 볼 수 있습니다.
+    구현이 막힐 때 내부 신호를 들여다보는 디버깅 도구로 활용하세요.
+  </p>
+
   <h2><span class="num">5</span>합격 기준 <span class="tag">pytest</span></h2>
   <ol class="pass-list">
     <li><b>곡선 경로 추적 오차</b> — <code>L=4, lookahead_time=1.0, vx=3</code>, Y0=2, 30초 pipeline,

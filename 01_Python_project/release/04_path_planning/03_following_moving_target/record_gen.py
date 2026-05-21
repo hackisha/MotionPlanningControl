@@ -52,7 +52,7 @@ def run_sim() -> dict:
     leading = VehicleLat(dt=DT, vx=VX, X0=0.0, Y0=0.0)
     ego = VehicleLat(dt=DT, vx=VX, X0=-10.0, Y0=0.0)
     pp_lead = PurePursuit(L=4.0, lookahead_time=1.0)
-    pp_ego = PurePursuit(L=4.0, lookahead_time=1.0)
+    pp_ego = PurePursuit(L=4.0, lookahead_time=0.0)
     tracker = LeadingTargetTracker(max_history=5)
 
     # leading lane keep 파이프라인

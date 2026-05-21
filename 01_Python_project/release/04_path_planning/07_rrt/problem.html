@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>과제 — RRT sampling 기반 경로 탐색</title>
+  <style>
+    :root {
+      --ink: #1a2330;
+      --muted: #5b6675;
+      --line: #d9dee6;
+      --accent: #1f6feb;
+      --accent-soft: #e8f0fe;
+      --warn: #b3541e;
+      --warn-soft: #fdf0e6;
+      --ok: #1f7a3d;
+      --code-bg: #f4f6f9;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      line-height: 1.7;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 28px 96px;
+      background: #fff;
+    }
+
+    h1 {
+      font-size: 1.7rem;
+      margin: 0 0 4px;
+      letter-spacing: -0.01em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.98rem;
+      margin-bottom: 28px;
+    }
+
+    h2 {
+      font-size: 1.18rem;
+      margin: 38px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--line);
+    }
+
+    h2 .num {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.82rem;
+      width: 1.55em;
+      height: 1.55em;
+      line-height: 1.55em;
+      text-align: center;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: 1px;
+    }
+
+    h3 {
+      font-size: 1.02rem;
+      margin: 22px 0 6px;
+    }
+
+    p {
+      margin: 8px 0;
+    }
+
+    code {
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .scenario-card {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 1.02rem;
+    }
+
+    .formula {
+      background: #fbfcfe;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 14px 0;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.96rem;
+    }
+
+    .formula .lbl {
+      color: var(--muted);
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 0.94rem;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--code-bg);
+      font-weight: 600;
+    }
+
+    ul,
+    ol {
+      margin: 8px 0;
+      padding-left: 24px;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    .note {
+      background: var(--warn-soft);
+      border-left: 4px solid var(--warn);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 0.94rem;
+    }
+
+    .note b {
+      color: var(--warn);
+    }
+
+    .fig {
+      margin: 22px 0;
+      text-align: center;
+    }
+
+    .fig figcaption {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-top: 8px;
+    }
+
+    .pass-list li {
+      margin: 8px 0;
+    }
+
+    .pass-list b {
+      color: var(--ok);
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-left: 6px;
+      vertical-align: 2px;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 32px 0;
+    }
+
+    .footer {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>RRT — Rapidly-exploring Random Tree</h1>
+  <p class="subtitle">Chapter 4 · Path Planning / 07_rrt &nbsp;|&nbsp; 무작위 sampling 으로 공간을 탐색하는 planner</p>
+
+  <div class="scenario-card">
+    <b>RRT</b> 로 격자 미로에서 start 부터 goal 까지 경로를 <b>무작위 sampling</b> 으로 탐색하세요.
+    A*(05)와 <b>같은 map</b> 을 써서 두 알고리즘의 expansion 패턴을 viewer 에서 직접 비교할 수 있습니다.
+  </div>
+
+  <div class="note">
+    <b>이 과제는 차량 제어가 없습니다.</b> 결과는 Rerun 2D viewer 의 tree 성장과 최종 경로로만 확인합니다.
+  </div>
+
+  <h2><span class="num">1</span>문제 상황</h2>
+  <p>
+    Dijkstra·A* 는 격자를 <b>체계적으로</b> 확장합니다 — 답은 정확하지만, 차원이 커지면 칸 수가 폭발합니다.
+    RRT 는 반대 접근입니다: 공간에 점을 <b>무작위로 뿌리고</b>, 가장 가까운 tree 노드에서 그 점 쪽으로
+    조금씩 가지를 뻗어 tree 를 키웁니다. 최단성은 보장하지 않지만, 넓은 연속 공간을 빠르게 훑습니다.
+  </p>
+  <table>
+    <tr><th></th><th>A* (05)</th><th>RRT (07)</th></tr>
+    <tr><td>상태 공간</td><td>격자(정수)</td><td>연속(float)</td></tr>
+    <tr><td>노드 선택</td><td>open 의 최소 <code>f</code> (deterministic)</td><td>uniform random sampling</td></tr>
+    <tr><td>방향성</td><td>heuristic 으로 goal 우선</td><td>random + <code>goal_sample_rate</code> bias</td></tr>
+    <tr><td>출력</td><td>최단 경로</td><td>어떤 경로 (최단성 보장 X)</td></tr>
+    <tr><td>재현성</td><td>항상 같음</td><td>seed 고정해야 같음</td></tr>
+  </table>
+
+  <div class="fig">
+    <svg viewBox="0 0 300 300" width="100%" style="max-width:340px" xmlns="http://www.w3.org/2000/svg"
+      aria-label="rrt grid maze">
+      <rect x="0" y="0" width="300" height="300" fill="#f4f6f9" />
+      <g stroke="#e3e7ec" stroke-width="1">
+        <line x1="60" y1="0" x2="60" y2="300" />
+        <line x1="120" y1="0" x2="120" y2="300" />
+        <line x1="180" y1="0" x2="180" y2="300" />
+        <line x1="240" y1="0" x2="240" y2="300" />
+        <line x1="0" y1="60" x2="300" y2="60" />
+        <line x1="0" y1="120" x2="300" y2="120" />
+        <line x1="0" y1="180" x2="300" y2="180" />
+        <line x1="0" y1="240" x2="300" y2="240" />
+      </g>
+      <rect x="0" y="0" width="300" height="300" fill="none" stroke="#2a2f3a" stroke-width="6" />
+      <line x1="150" y1="50" x2="150" y2="250" stroke="#2a2f3a" stroke-width="6" />
+      <line x1="100" y1="250" x2="200" y2="250" stroke="#2a2f3a" stroke-width="6" />
+      <line x1="100" y1="50" x2="200" y2="50" stroke="#2a2f3a" stroke-width="6" />
+      <!-- random tree edges -->
+      <g stroke="#7fa8e0" stroke-width="2" fill="none">
+        <path d="M50,150 L70,110 L95,80 L130,40" />
+        <path d="M70,110 L60,200 L100,235" />
+        <path d="M95,80 L160,30 L215,55" />
+        <path d="M160,30 L235,90 L250,150" />
+        <path d="M50,150 L40,95" />
+      </g>
+      <!-- start -->
+      <circle cx="50" cy="150" r="9" fill="#1f6feb" />
+      <text x="50" y="138" text-anchor="middle" fill="#1f6feb" font-size="11" font-weight="700">S</text>
+      <!-- goal -->
+      <circle cx="250" cy="150" r="9" fill="#d6453d" />
+      <text x="250" y="138" text-anchor="middle" fill="#d6453d" font-size="11" font-weight="700">G</text>
+    </svg>
+    <figcaption>그림 1. start 에서 무작위로 뻗어 나가는 tree — 가지가 goal 근처에 닿으면 그 경로를 복원한다.</figcaption>
+  </div>
+
+  <h2><span class="num">2</span>Map 구조 <span class="tag">map_2 · A* 와 동일</span></h2>
+  <ul>
+    <li>외곽 border + 중앙 vertical wall(<code>x=30, y=10..50</code>).</li>
+    <li>box 의 상·하 면(<code>y=10 / y=50, x=20..40</code>) — 좌·우 면은 개방.</li>
+    <li>start <code>(10, 30)</code>, goal <code>(50, 30)</code> — 중앙 벽 우회 필수.</li>
+  </ul>
+
+  <h2><span class="num">3</span>구현 도구 — <code>rrt.py</code> 안의 helper</h2>
+  <p>
+    <code>rrt()</code> 함수와 <b>같은 파일</b> 안에 helper 3개가 미리 정의돼 있습니다. import 없이
+    <code>rrt()</code> 본문에서 바로 호출하세요 — 직접 다시 구현하지 마세요.
+  </p>
+  <table>
+    <tr><th>함수</th><th>역할</th></tr>
+    <tr><td><code>_euclid(a, b)</code></td><td>2D Euclidean 거리 — nearest 비교·goal 도달 판정</td></tr>
+    <tr><td><code>_steer(node_from, node_to, eta)</code></td><td><code>node_from</code> 에서 <code>node_to</code> 방향으로 <code>eta</code> 까지 전진한 새 점</td></tr>
+    <tr><td><code>_is_collision_free(a, b, obstacles)</code></td><td>선분을 fine-sample 해 어느 cell 도 obstacle 가 아니면 True</td></tr>
+  </table>
+  <div class="note">
+    <b>주의:</b> helper 들은 검증 환경 — 시그니처·본문 수정 금지. <code>rrt()</code> 함수 본문만 채우면 됩니다.
+  </div>
+
+  <h2><span class="num">4</span>구현 과제</h2>
+  <p>
+    <code>rrt.py</code> 의 <code>rrt()</code> 함수 본문(<code># TODO</code>)을 구현하세요. 시그니처는 이미 주어져 있습니다.
+  </p>
+  <pre>def rrt(
+    start: tuple[float, float],
+    goal: tuple[float, float],
+    obstacles: set[tuple[int, int]],
+    grid_size: int,
+    max_iter: int = 2000, eta: float = 3.0,
+    goal_sample_rate: float = 0.05, goal_range: float = 1.5,
+    seed: int | None = 0,
+    on_step: Callable[[(x, y), (px, py), int], None] | None = None,
+) -> list[tuple[float, float]]</pre>
+  <table>
+    <tr><th>인자</th><th>의미</th></tr>
+    <tr><td><code>obstacles</code></td><td>O(1) 검사용 정수 격자 cell 집합.</td></tr>
+    <tr><td><code>grid_size</code></td><td>sampling 영역 <code>[0, grid_size]²</code>.</td></tr>
+    <tr><td><code>eta</code></td><td>steer 한 스텝의 최대 거리 — 새 node 가 nearest 에서 멀어질 수 있는 상한.</td></tr>
+    <tr><td><code>goal_sample_rate</code></td><td>random sample 대신 goal 을 직접 sampling 할 확률(bias).</td></tr>
+    <tr><td><code>goal_range</code></td><td>새 node 가 goal 에서 이 거리 안이면 도달 판정.</td></tr>
+    <tr><td><code>seed</code></td><td>random seed(<code>None</code> = OS random).</td></tr>
+    <tr><td><code>on_step</code></td><td>매 새 node 추가 직후 호출 — <code>(new_node, parent_node, iteration)</code>.</td></tr>
+    <tr><td><b>반환</b></td><td>경로 list(start → goal 근접). 미발견 시 <code>[]</code>.</td></tr>
+  </table>
+
+  <h3>게인·파라미터 튜닝</h3>
+  <p>
+    이 과제에서 구현하는 것은 <b>알고리즘 로직</b> 입니다. 탐색 동작을 좌우하는 값(<code>seed</code>,
+    <code>eta</code>, <code>max_iter</code>)은 <code>record_gen.py</code> 의 <code>--seed</code> /
+    <code>--eta</code> / <code>--max-iter</code> 옵션으로 viewer 에서 자유롭게 실험할 수 있습니다 —
+    seed 를 바꾸면 전혀 다른 tree 가 자랍니다. <b>합격 기준 검증용 값은 <code>test_*.py</code> 에 있으며
+    변경 금지</b> 입니다.
+  </p>
+
+  <h2><span class="num">5</span>실행 방법</h2>
+  <p>모든 명령은 git 저장소 루트에서 실행합니다.</p>
+
+  <h3>구현 파일</h3>
+  <pre>01_Python_project/release/04_path_planning/07_rrt/rrt.py</pre>
+
+  <h3>테스트 — 합격 기준 검증</h3>
+  <pre>uv run pytest 01_Python_project/release/04_path_planning/07_rrt/ -v</pre>
+
+  <h3>시나리오 실행 → record JSON 생성 + Rerun viewer 자동 실행</h3>
+  <pre>uv run python 01_Python_project/release/04_path_planning/07_rrt/record_gen.py</pre>
+  <p>
+    2D viewer 에 격자 + 장애물 + start + goal 이 표시되고, timeline scrubber <code>step</code> 으로
+    sampling 진행을 재생합니다 — 옅은 파랑 선으로 tree edge 가 누적되고, 오렌지 마커가 새로 추가된 node,
+    옅은 노랑 점이 누적된 tree node, 마젠타 곡선이 최종 path 입니다.
+  </p>
+  <ul>
+    <li>JSON 만 만들려면 <code>--no-viewer</code>.</li>
+    <li><code>--seed N</code> 으로 random seed 변경(기본 0, 재현성).</li>
+    <li><code>--eta E</code> 로 steer 한 스텝 거리(기본 3.0).</li>
+    <li><code>--max-iter N</code> 으로 최대 sampling 반복(기본 2000).</li>
+    <li><code>--skip N</code> 으로 frame subsample(기본 10).</li>
+  </ul>
+
+  <h3>Rerun viewer 재생 (search 전용 simulator)</h3>
+  <pre>uv run python 01_Python_project/release/04_path_planning/simulator_search.py</pre>
+  <p>인자 없이 실행하면 <code>04_path_planning/</code> 하위의 모든 search record 를 한 viewer 에 멀티 로드 — A* 와 RRT 를 한 화면에서 비교할 수 있습니다.</p>
+
+  <h3>디버그 신호 — iteration 별 분석 (선택)</h3>
+  <p>
+    <code>rrt()</code> 는 optional 인자 <code>dbg</code> 를 받습니다. 여러분이 구현한 탐색 루프 안에서
+    <code>dbg</code> 가 주어졌을 때 <code>dbg.add(...)</code> 를 호출하면, <b>매 iteration(reject 포함)</b>의
+    내부 값이 record 의 <code>debug_scalars</code> 로 저장됩니다 — goal 까지 거리·reject 여부·tree 크기
+    같은 값을 남겨 탐색이 어떻게 수렴하는지 분석할 수 있습니다.
+  </p>
+  <pre>for it in range(max_iter):
+    ...
+    if dbg is not None:
+        dbg.add(goal_dist=..., rejected=..., tree_size=...)   # 매 iteration 한 줄</pre>
+  <p>
+    Rerun viewer 는 RRT record 를 열 때 <b><code>iteration</code> 타임라인을 기본</b>으로 잡습니다 —
+    하단 타임라인을 스크럽하면 search tree 가 자라는 모습이 iteration 단위로 보입니다.
+    디버그 신호(scalar)는 기본 화면에 없으니, 좌측 entity 패널에서 <code>/debug/&lt;이름&gt;</code> 을
+    골라 TimeSeriesView 를 추가하면 같은 iteration 축에서 tree 와 함께 분석할 수 있습니다.
+  </p>
+  <p>
+    batched <code>step</code> 타임라인도 그대로 있습니다 (frame 단위 빠른 개요) — 하단
+    타임라인 선택에서 전환할 수 있습니다. 단 디버그 scalar 는 iteration 단위라
+    <code>step</code> 에서 보면 점들이 뭉쳐 보입니다 — scalar 분석은 <code>iteration</code>
+    타임라인에서 하세요.
+  </p>
+
+  <h2><span class="num">6</span>합격 기준 <span class="tag">pytest</span></h2>
+  <p>알고리즘 형태(자료 구조·RNG 구현)는 자유 — 동작 명세(behavioral spec)만 검증합니다.</p>
+  <ol class="pass-list">
+    <li><b>start 일치</b> — <code>path[0] == start</code>.</li>
+    <li><b>goal 근접</b> — <code>‖path[-1] − goal‖ &lt; goal_range</code>(기본 1.5).</li>
+    <li><b>segment 충돌 없음</b> — 연속 두 점을 잇는 선분의 fine-sample 어느 cell 도 obstacle 가 아님.</li>
+    <li><b>steer 제약</b> — 연속 segment 길이 ≤ <code>eta</code>.</li>
+    <li><b>on_step 콜백 호출</b> — 호출 수 ≥ path edge 수, 첫 호출 parent == start.</li>
+    <li><b>재현성</b> — 같은 seed 면 같은 path.</li>
+  </ol>
+
+  <h2><span class="num">7</span>힌트</h2>
+  <ul>
+    <li><b>자료 구조</b> — tree node 들을 list 로 쌓고(<code>nodes[0]</code> 가 start), 각 node 의 부모 index 를
+      따로 dict 에 기록합니다. goal 에 닿으면 부모를 거꾸로 따라가며 경로를 복원합니다.</li>
+    <li><b>RNG 는 인스턴스로</b> — <code>random.Random(seed)</code> 로 별도 RNG 를 만드세요. 전역
+      <code>random</code> 을 쓰면 다른 코드와 seed 가 섞여 재현성이 깨집니다.</li>
+    <li><b>핵심 루프 5단계</b> — ① sample(<code>goal_sample_rate</code> 확률로 goal, 아니면 uniform random)
+      ② nearest node 찾기 ③ <code>_steer</code> 로 새 점 생성 ④ <code>_is_collision_free</code> 검사
+      ⑤ tree 에 추가 + <code>on_step</code> 호출 + goal 도달 검사.</li>
+    <li>nearest 와 거의 같은 점이 나오면 그 iteration 은 skip 하세요. <code>max_iter</code> 를 다 돌고도
+      goal 에 닿지 못하면 빈 list 를 반환합니다.</li>
+  </ul>
+
+  <h2><span class="num">8</span>제약</h2>
+  <ul>
+    <li><code>map_rrt.py</code>, <code>record_gen.py</code>, <code>test_rrt.py</code> — <b>수정 금지</b> (검증 환경).</li>
+    <li><code>rrt.py</code> 안의 helper(<code>_euclid</code>, <code>_steer</code>, <code>_is_collision_free</code>) — 수정 금지.</li>
+    <li><code>simulator_search.py</code>(Chapter 4 공용) — 수정 금지. <code>rrt()</code> 의 시그니처 변경 금지.</li>
+    <li>RNG 는 <code>random</code> 모듈만 사용 — <code>numpy.random</code> / scipy 등 다른 RNG 라이브러리 금지.</li>
+  </ul>
+
+  <hr>
+  <p class="footer">
+    IVS — Intelligent Vehicle Systems · Chapter 4 Path Planning · 07_rrt<br>
+    구현 파일: <code>rrt.py</code> · 검증: <code>pytest</code> · 시각화: Rerun 2D viewer
+  </p>
+
+</body>
+
+</html>

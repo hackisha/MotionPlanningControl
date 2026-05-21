@@ -38,7 +38,7 @@ def run_sim() -> dict:
     steps = int(SIM_TIME / DT)
     plant = VehicleLat(dt=DT, vx=VX)
     # [튜닝] PurePursuit lookahead_time / LaneWidthEstimator init — test 의 값은 변경 X
-    pp = PurePursuit(L=4.0, lookahead_time=1.0)
+    pp = PurePursuit(L=4.0, lookahead_time=0.0)
     lw_est = LaneWidthEstimator(Lw_init=4.0)
     g2l_L = Global2Local(NUM_SAMPLE)
     g2l_R = Global2Local(NUM_SAMPLE)

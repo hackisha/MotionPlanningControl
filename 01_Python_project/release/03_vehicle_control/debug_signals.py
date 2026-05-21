@@ -48,20 +48,23 @@ class DebugSignals:
         """현재까지 수집된 신호 이름 목록."""
         return list(self._series)
 
-    def to_debug_scalars(self, t, units: dict[str, str] | None = None) -> list[dict]:
+    def to_debug_scalars(self, t=None,
+                         units: dict[str, str] | None = None) -> list[dict]:
         """record JSON 의 `debug_scalars` 필드 형태로 변환.
 
         Args:
-            t: 시간축 시퀀스 (각 신호 value 와 길이가 같아야 함).
+            t: 시간축 시퀀스 (각 신호 value 와 길이가 같아야 함). None 이면
+                0,1,2,… 정수 인덱스를 시간축으로 쓴다 (search-record 의 iteration 등).
             units: optional `{신호이름: 단위}` — 생략하거나 빠진 이름은 "-".
 
         Returns:
             `[{"name", "unit", "t", "value"}, ...]` — `debug_scalars` 에 그대로 대입.
         """
         units = units or {}
-        t_list = [float(x) for x in t]
-        return [
-            {"name": name, "unit": units.get(name, "-"),
-             "t": t_list, "value": values}
-            for name, values in self._series.items()
-        ]
+        out: list[dict] = []
+        for name, values in self._series.items():
+            t_list = (list(range(len(values))) if t is None
+                      else [float(x) for x in t])
+            out.append({"name": name, "unit": units.get(name, "-"),
+                        "t": t_list, "value": values})
+        return out

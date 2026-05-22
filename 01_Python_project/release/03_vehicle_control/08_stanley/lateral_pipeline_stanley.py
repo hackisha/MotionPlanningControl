@@ -44,54 +44,34 @@ class LateralPipeline:
         self.sample_xs = np.asarray(sample_xs, dtype=float)
         self.x_local = np.asarray(x_local, dtype=float)
 
-def step(
-    self,
-    x_ego: float,
-    y_ego: float,
-    yaw_ego: float,
-    vx: float,
-    ref_y_fn: Callable[[np.ndarray], np.ndarray],
-    lookahead_x: float,
-) -> PipelineOutput:
-    global_xs = x_ego + self.sample_xs
-    global_ys = ref_y_fn(global_xs)
+    def step(
+        self,
+        x_ego: float,
+        y_ego: float,
+        yaw_ego: float,
+        vx: float,
+        ref_y_fn: Callable[[np.ndarray], np.ndarray],
+        lookahead_x: float,
+    ) -> PipelineOutput:
+        global_xs = x_ego + self.sample_xs
+        global_ys = ref_y_fn(global_xs)
 
-    points = np.column_stack([global_xs, global_ys])
+        points = np.column_stack([global_xs, global_ys])
 
-    local_points = self.g2l.convert(points, yaw_ego, x_ego, y_ego)
+        local_points = self.g2l.convert(points, yaw_ego, x_ego, y_ego)
 
-    coeff = self.fitter.fit(local_points)
+        coeff = self.fitter.fit(local_points)
 
-    self.ev.calculate(coeff, self.x_local.reshape(-1))
-    fit_local_points = self.ev.points.copy()
+        self.ev.calculate(coeff, self.x_local.reshape(-1))
+        fit_local_points = self.ev.points.copy()
 
-    delta = self.controller.step(coeff, vx)
+        delta = self.controller.step(coeff, vx)
 
-    y_lh = _polyval_at(coeff, lookahead_x)
-    lookahead_local = (lookahead_x, y_lh)
+        y_lh = _polyval_at(coeff, lookahead_x)
 
-    return PipelineOutput(
-        delta=float(delta),
-        coeff=coeff,
-        fit_local_points=fit_local_points,
-        lookahead_local=(float(lookahead_local[0]), float(lookahead_local[1])),
-    )
-
-        # TODO: 주입된 객체들을 호출해 perception → fit → control 흐름을 완성.
-        # 1) global ref points: ego.X 로부터 self.sample_xs offset 으로 sampling
-        #    x_global = x_ego + self.sample_xs
-        #    y_global = ref_y_fn(x_global)       # vectorized — array x → array y
-        #    points   = np.column_stack([x_global, y_global])  # (NUM_POINT, 2)
-        # 2) Global → Local:  self.g2l.convert(points, yaw_ego, x_ego, y_ego)
-        # 3) Polynomial fit:  self.fitter.fit(self.g2l.local_points)
-        #    coeff = self.fitter.coeff           # (degree+1, 1)
-        # 4) Evaluate fit on x_local grid (viz only):
-        #    self.ev.calculate(coeff, self.x_local)
-        #    fit_local_points = self.ev.points.copy()  # (len(x_local), 2)
-        # 5) Controller step (위임): delta = self.controller.step(coeff, vx)
-        # 6) Lookahead point (viz only): y_lh = _polyval_at(coeff, lookahead_x)
-        #    lookahead_local = (lookahead_x, y_lh)
-        # return PipelineOutput(delta=float(delta), coeff=coeff,
-        #                       fit_local_points=fit_local_points,
-        #                       lookahead_local=(float(lookahead_x), float(y_lh)))
-        raise NotImplementedError
+        return PipelineOutput(
+            delta=float(delta),
+            coeff=coeff,
+            fit_local_points=fit_local_points,
+            lookahead_local=(float(lookahead_x), float(y_lh)),
+        )

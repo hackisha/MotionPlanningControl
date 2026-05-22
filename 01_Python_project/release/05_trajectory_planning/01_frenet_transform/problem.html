@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>과제 — Frenet ↔ Cartesian 좌표 변환</title>
+  <style>
+    :root {
+      --ink: #1a2330;
+      --muted: #5b6675;
+      --line: #d9dee6;
+      --accent: #1f6feb;
+      --accent-soft: #e8f0fe;
+      --warn: #b3541e;
+      --warn-soft: #fdf0e6;
+      --ok: #1f7a3d;
+      --code-bg: #f4f6f9;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      line-height: 1.7;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 28px 96px;
+      background: #fff;
+    }
+
+    h1 {
+      font-size: 1.7rem;
+      margin: 0 0 4px;
+      letter-spacing: -0.01em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.98rem;
+      margin-bottom: 28px;
+    }
+
+    h2 {
+      font-size: 1.18rem;
+      margin: 38px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--line);
+    }
+
+    h2 .num {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.82rem;
+      width: 1.55em;
+      height: 1.55em;
+      line-height: 1.55em;
+      text-align: center;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: 1px;
+    }
+
+    h3 {
+      font-size: 1.02rem;
+      margin: 22px 0 6px;
+    }
+
+    p {
+      margin: 8px 0;
+    }
+
+    code {
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .scenario-card {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 1.02rem;
+    }
+
+    .formula {
+      background: #fbfcfe;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 14px 0;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.96rem;
+    }
+
+    .formula .lbl {
+      color: var(--muted);
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 0.94rem;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--code-bg);
+      font-weight: 600;
+    }
+
+    ul,
+    ol {
+      margin: 8px 0;
+      padding-left: 24px;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    .note {
+      background: var(--warn-soft);
+      border-left: 4px solid var(--warn);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 0.94rem;
+    }
+
+    .note b {
+      color: var(--warn);
+    }
+
+    .fig {
+      margin: 22px 0;
+      text-align: center;
+    }
+
+    .fig figcaption {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-top: 8px;
+    }
+
+    .pass-list li {
+      margin: 8px 0;
+    }
+
+    .pass-list b {
+      color: var(--ok);
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-left: 6px;
+      vertical-align: 2px;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 32px 0;
+    }
+
+    .footer {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>궤적 계획 — Frenet ↔ Cartesian 좌표 변환</h1>
+  <p class="subtitle">Chapter 5 · Trajectory Planning / 01_frenet_transform &nbsp;|&nbsp;
+    굽은 도로를 펴서 다루는 좌표계</p>
+
+  <div class="scenario-card">
+    굽은 도로 위의 자동차 위치를 전역 (x, y) 로 다루면 "차선 안에 있나",
+    "앞차와 얼마나 떨어졌나" 같은 질문이 곧장 풀리지 않습니다. 도로 <b>중심선을
+    따라간 거리 <code>s</code></b> 와 <b>중심선에서 옆으로 벗어난 거리
+    <code>d</code></b> 로 위치를 기술하는 <b>Frenet 좌표계</b>와, 전역 (x, y)
+    <b>Cartesian 좌표계</b> 사이를 오가는 두 변환을 구현해 보세요.
+  </div>
+
+  <h2><span class="num">1</span>문제 상황</h2>
+  <p>
+    굽은 3 차선 도로 위에 자차 1 대와 타겟 6 대가 놓여 있습니다. Frenet 좌표계는
+    도로 <b>중심선</b>을 기준 축으로 삼아, 위치를 두 값으로 분해합니다:
+  </p>
+  <ul>
+    <li><b><code>s</code> — 종방향</b>: 중심선을 따라간 호 길이(arc length). "도로를
+      따라 얼마나 멀리".</li>
+    <li><b><code>d</code> — 횡방향</b>: 중심선에서 옆으로 벗어난 부호 있는 거리.
+      "어느 차선에, 차선 안 어디쯤". <b><code>d &gt; 0</code> = 진행 방향 기준
+      왼쪽.</b></li>
+  </ul>
+  <p>
+    이렇게 하면 굽은 도로가 <b>곧게 펴진</b> 것처럼 다뤄집니다 — 다음 과제
+    (<code>02_frenet_moving_target</code>)의 궤적 계획기는 이 펴진 좌표계 위에서
+    동작합니다. 이 과제는 그 좌표계 자체를 만드는 단계입니다.
+  </p>
+
+  <div class="fig">
+    <svg viewBox="0 0 860 270" width="100%" style="max-width:820px" xmlns="http://www.w3.org/2000/svg"
+      aria-label="Frenet transform diagram">
+      <!-- ── left: curved road (Cartesian) ── -->
+      <path d="M30,210 Q150,90 250,150 Q350,210 410,120" stroke="#c2c9d4" stroke-width="58"
+        fill="none" stroke-linecap="round" />
+      <path d="M30,210 Q150,90 250,150 Q350,210 410,120" stroke="#fff" stroke-width="2.4"
+        fill="none" stroke-dasharray="9 8" />
+      <circle cx="190" cy="123" r="8" fill="#1f6feb" />
+      <circle cx="320" cy="171" r="8" fill="#8b93a0" />
+      <text x="150" y="248" fill="#5b6675" font-size="13" font-weight="600">Cartesian (x, y)</text>
+
+      <!-- ── arrow ── -->
+      <text x="455" y="150" fill="#1f6feb" font-size="28" font-weight="700">→</text>
+      <text x="438" y="172" fill="#5b6675" font-size="11">변환</text>
+
+      <!-- ── right: straightened road (Frenet) ── -->
+      <rect x="520" y="100" width="320" height="58" fill="#c2c9d4" />
+      <line x1="520" y1="129" x2="840" y2="129" stroke="#fff" stroke-width="2.4"
+        stroke-dasharray="9 8" />
+      <circle cx="600" cy="115" r="8" fill="#1f6feb" />
+      <circle cx="710" cy="142" r="8" fill="#8b93a0" />
+      <line x1="520" y1="190" x2="840" y2="190" stroke="#9aa4b2" stroke-width="1.4" />
+      <text x="836" y="206" fill="#5b6675" font-size="12" text-anchor="end">s →</text>
+      <line x1="520" y1="100" x2="520" y2="158" stroke="#9aa4b2" stroke-width="1.4" />
+      <text x="508" y="100" fill="#5b6675" font-size="12" text-anchor="end">d</text>
+      <text x="600" y="248" fill="#5b6675" font-size="13" font-weight="600">Frenet (s, d)</text>
+    </svg>
+    <figcaption>그림 1. 굽은 도로 위의 위치(좌)를 중심선 기준 호 길이 <code>s</code> ·
+      횡 offset <code>d</code> 로 바꾸면(우) 도로가 곧게 펴진다.</figcaption>
+  </div>
+
+  <h2><span class="num">2</span>주어진 환경</h2>
+  <p>아래 파일들은 검증 환경입니다 — 읽어서 인터페이스를 파악하되 <b>수정하지 않습니다</b>.</p>
+  <table>
+    <tr>
+      <th>파일</th>
+      <th>역할</th>
+    </tr>
+    <tr>
+      <td><code>road.py</code></td>
+      <td>열린 곡선 3 차선 도로(<code>LANE_WIDTH = 4 m</code>, <code>s ∈ [-50, +100]</code>).
+        <code>Road</code> 가 중심선 점열 <code>center_x</code> / <code>center_y</code> 와
+        누적 호 길이 <code>center_s</code>, 시각화용 차선 폴리라인을 제공합니다. 좌표
+        변환 자체는 포함하지 않습니다.</td>
+    </tr>
+    <tr>
+      <td><code>demo.py</code></td>
+      <td>시나리오(자차 + 타겟 6 대)를 구성하고, 변환 전후를 plotly 2-패널로 그립니다.</td>
+    </tr>
+  </table>
+  <p>
+    중심선은 <b>점열 + 누적 호 길이</b>로 주어진 폴리라인입니다. 이 도로는 <code>s</code>
+    의 원점(<code>s = 0</code>)이 자차의 종방향 위치라서, <code>center_s</code> 는 0 이
+    아니라 <b>음수에서 시작</b>합니다 — 주어진 <code>center_s</code> 를 그대로 사용하세요.
+  </p>
+
+  <h2><span class="num">3</span>구현 과제</h2>
+  <p>
+    <code>frenet_transform.py</code> 의 두 함수(<code># TODO</code>)를 구현하세요.
+    시그니처는 이미 주어져 있습니다.
+  </p>
+  <pre>def cartesian_to_frenet(x, y, cx, cy, cs) -> (s, d)
+def frenet_to_cartesian(s, d, cx, cy, cs) -> (x, y, heading)</pre>
+  <table>
+    <tr>
+      <th>인자</th>
+      <th>의미</th>
+    </tr>
+    <tr>
+      <td><code>cx, cy</code></td>
+      <td>중심선 점들의 x / y 좌표 배열 (<code>Road.center_x</code> / <code>center_y</code>)</td>
+    </tr>
+    <tr>
+      <td><code>cs</code></td>
+      <td>중심선 각 점까지의 누적 호 길이 배열 (<code>Road.center_s</code>)</td>
+    </tr>
+  </table>
+
+  <h3>① <code>cartesian_to_frenet</code> — 전역 (x, y) → Frenet (s, d)</h3>
+  <ul>
+    <li>점을 중심선의 <b>각 세그먼트에 정사영</b>해, 가장 가까운 발(foot)을 찾습니다.
+      세그먼트 보간 파라미터 <code>t</code> 는 <code>[0, 1]</code> 로 clamp 합니다.</li>
+    <li><code>s</code> = 발까지의 누적 호 길이, <code>d</code> = 발에서 점까지의 수직
+      거리. <code>d</code> 의 <b>부호</b>는 진행 방향 기준 왼쪽(<code>+</code>) /
+      오른쪽(<code>-</code>) 입니다.</li>
+  </ul>
+
+  <h3>② <code>frenet_to_cartesian</code> — Frenet (s, d) → 전역 (x, y, heading)</h3>
+  <ul>
+    <li><code>s</code> 가 속한 중심선 세그먼트를 찾아, 세그먼트 시작점에서 호 길이만큼
+      전진한 중심선 위 기준점을 구합니다.</li>
+    <li>그 기준점에서 <b>왼쪽 법선 방향</b>으로 <code>d</code> 만큼 이동한 점이 결과
+      입니다. 도로 양 끝을 벗어난 <code>s</code> 는 clamp 합니다.</li>
+  </ul>
+
+  <h3>게인·파라미터 튜닝</h3>
+  <p>
+    이 과제에서 구현하는 것은 <b>좌표 변환 알고리즘 로직</b>입니다 — 튜닝할 게인은
+    없습니다. 코드의 역할이 세 군데로 나뉩니다.
+  </p>
+  <ul>
+    <li><b>라이브러리 코드</b> (<code>frenet_transform.py</code>, 구현 대상) — 두 변환
+      함수. 시그니처는 고정, 본문(<code># TODO</code>)만 채웁니다.</li>
+    <li><b>producer</b> (<code>demo.py</code>) — 시각화 <b>시나리오</b>를 정하는 곳:
+      자차의 횡위치, 타겟 배치 시드 등. 자유롭게 바꿔 실험해 보세요.</li>
+    <li><b><code>test_*.py</code></b> — 합격 기준 검증용. <b>변경 금지</b>.</li>
+  </ul>
+  <p>
+    두 <code># TODO</code> 를 모두 구현하면 <code>demo.py</code> 가 그대로 동작합니다 —
+    구현 전에는 <code>NotImplementedError</code> 가 납니다.
+  </p>
+
+  <h2><span class="num">4</span>실행 방법</h2>
+  <p>모든 명령은 git 저장소 루트에서 실행합니다.</p>
+
+  <h3>구현 파일</h3>
+  <pre>01_Python_project/release/05_trajectory_planning/01_frenet_transform/frenet_transform.py</pre>
+
+  <h3>테스트 — 합격 기준 검증</h3>
+  <pre>uv run pytest 01_Python_project/release/05_trajectory_planning/01_frenet_transform/ -v</pre>
+
+  <h3>데모 — 변환 전후를 plotly 2-패널로 시각화</h3>
+  <pre>uv run python 01_Python_project/release/05_trajectory_planning/01_frenet_transform/demo.py</pre>
+  <p>
+    기본 브라우저 새 탭에 ① Cartesian(곡선 도로) · ② Frenet(직선화) 2-패널 그래프가
+    뜹니다. 두 <code># TODO</code> 를 구현하기 전에는 <code>NotImplementedError</code>
+    가 납니다.
+  </p>
+
+  <h2><span class="num">5</span>합격 기준 <span class="tag">pytest</span></h2>
+  <p>알고리즘 형태는 자유 — 동작 명세(behavioral spec)만 검증합니다. 검증 명령은 4 절 참조.</p>
+  <ol class="pass-list">
+    <li><b>중심선 복원</b> — <code>d=0</code> 인 Frenet 점은 중심선 위로 변환되고,
+      중심선 점은 <code>(s, d≈0)</code> 으로 되돌아온다.</li>
+    <li><b>횡 offset</b> — <code>frenet_to_cartesian(s, d)</code> 가 중심선에서 왼쪽
+      법선 방향으로 거리 <code>|d|</code> 만큼 떨어진 점을 준다.</li>
+    <li><b>부호 규약</b> — 진행 방향 왼쪽으로 벗어난 점은 <code>d&gt;0</code>,
+      오른쪽은 <code>d&lt;0</code> 으로 변환된다.</li>
+    <li><b>변환 왕복</b> — <code>cartesian → frenet → cartesian</code> 왕복이 원래
+      점을 복원한다 (두 변환이 서로 역함수).</li>
+  </ol>
+
+  <h2><span class="num">6</span>힌트</h2>
+  <ul>
+    <li><b>세그먼트 정사영</b> — 점 <code>P</code> 를 세그먼트
+      <code>C_i → C_{i+1}</code> 에 정사영하면 보간 파라미터
+      <code>t = (P - C_i)·seg / |seg|²</code>. <code>t</code> 를 <code>[0, 1]</code>
+      로 clamp 하지 않으면 발이 세그먼트 밖으로 튀어 엉뚱한 세그먼트가 최단으로
+      뽑힙니다.</li>
+    <li><b><code>d</code> 의 부호</b> — 거리 자체는 양수입니다. 세그먼트 방향과
+      "발→점" 벡터의 <b>외적 z 성분</b> 부호로 왼쪽(<code>+</code>)/오른쪽
+      (<code>-</code>)을 가릅니다.</li>
+    <li><b>세그먼트 찾기</b> — <code>frenet_to_cartesian</code> 에서 <code>s</code> 가
+      속한 세그먼트는 <code>numpy.searchsorted(cs, s)</code> 로 찾을 수 있습니다.
+      경계 인덱스(첫/마지막 세그먼트) 처리에 주의하세요.</li>
+    <li><b>두 변환의 정합</b> — <code>cartesian_to_frenet</code> 의 부호 판정과
+      <code>frenet_to_cartesian</code> 의 법선 방향이 같은 쪽(왼쪽 = <code>+</code>)을
+      가리켜야 왕복이 맞습니다.</li>
+    <li><code>s</code> 원점은 자차 위치 — <code>center_s</code> 는 음수에서 시작합니다.
+      직접 0 부터 호 길이를 쌓지 말고 주어진 <code>cs</code> 를 그대로 쓰세요.</li>
+  </ul>
+
+  <h2><span class="num">7</span>제약</h2>
+  <ul>
+    <li><code>road.py</code>, <code>test_frenet_transform.py</code> — <b>수정 금지</b>
+      (검증 환경).</li>
+    <li><code>frenet_transform.py</code> 의 함수 <b>시그니처 변경 금지</b> — 본문
+      (<code># TODO</code>)만 채웁니다.</li>
+    <li>데모 시나리오(<code>demo.py</code> 의 자차 횡위치·타겟 배치)는 자유롭게
+      실험해도 됩니다. <code>test_*.py</code> 의 값은 변경 금지.</li>
+    <li>AI 도구(Claude / Cursor / ChatGPT / Gemini 등) 사용은 무관합니다 — 무엇을 쓰든,
+      안 쓰든 좋습니다.</li>
+  </ul>
+
+  <hr>
+  <p class="footer">
+    IVS — Intelligent Vehicle Systems · Chapter 5 Trajectory Planning · 01_frenet_transform<br>
+    구현 파일: <code>frenet_transform.py</code> · 검증: <code>pytest</code> · 시각화: plotly
+  </p>
+
+</body>
+
+</html>

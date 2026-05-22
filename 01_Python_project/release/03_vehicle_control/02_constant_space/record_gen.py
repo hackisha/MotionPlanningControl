@@ -37,7 +37,7 @@ def main() -> None:
     target = VehicleLong(dt=dt, m=500.0, Ca=0.0, x0=30.0, vx0=10.0)
     ego = VehicleLong(dt=dt, m=500.0, Ca=0.5, x0=0.0, vx0=10.0)
     # [튜닝] 게인/파라미터 값을 바꿔 응답 변화 비교 — test_*.py 의 값은 변경 X (합격 기준)
-    controller = ConstantSpacePID(kp=0.0, kd=0.0, ki=0.0, dt=dt,
+    controller = ConstantSpacePID(kp=2.0, kd=1.0, ki=0.0, dt=dt,
                                   target_space=target_space)
 
     t = np.zeros(steps)

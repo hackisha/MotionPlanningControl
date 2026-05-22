@@ -60,7 +60,7 @@ def main() -> None:
     vx = 3.0
     plant = VehicleLat(dt=DT, vx=vx, Y0=1.0)
     # [튜닝] 게인/파라미터 값을 바꿔 응답 변화 비교 — test_*.py 의 값은 변경 X (합격 기준)
-    kp, kd, ki, kff = 0.0, 0.0, 0.0, 0.0
+    kp, kd, ki, kff = 0.5, 0.03, 0.0, 0.5
     controller = LatPIDFF(kp=kp, kd=kd, ki=ki, kff=kff, dt=DT)
     pipe = LateralPipeline(
         g2l=Global2Local(NUM_POINT),

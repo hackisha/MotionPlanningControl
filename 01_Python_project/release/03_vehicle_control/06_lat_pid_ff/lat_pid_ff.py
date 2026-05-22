@@ -26,6 +26,18 @@ class LatPIDFF:
         self.error_sum: float = 0.0
 
     def step(self, coeff: np.ndarray, vx: float) -> float:
+        d_lh = self.lookahead_time * vx
+        error = _polyval_at(coeff, d_lh)
+        if self.prev_error is None:
+            d_error = 0.0
+        else:
+            d_error = (error - self.prev_error) / self.dt
+        self.error_sum += error * self.dt
+        ff_term = vx ** 2 * 2 * coeff[-3][0]  # coeff[-3] = y''(0)/2
+        u = self.kp * error + self.kd * d_error + self.ki * self.error_sum + self.kff * ff_term
+        self.prev_error = error
+        return u
+    
         # TODO: local-frame 다항식 기반 lateral PID + curvature feedforward.
         # 1) d_lh = lookahead_time · vx   (lookahead 거리)
         # 2) error = _polyval_at(coeff, d_lh)   (lookahead 점의 local-frame y)

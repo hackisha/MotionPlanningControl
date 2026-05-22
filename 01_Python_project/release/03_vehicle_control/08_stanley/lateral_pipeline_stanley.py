@@ -44,15 +44,39 @@ class LateralPipeline:
         self.sample_xs = np.asarray(sample_xs, dtype=float)
         self.x_local = np.asarray(x_local, dtype=float)
 
-    def step(
-        self,
-        x_ego: float,
-        y_ego: float,
-        yaw_ego: float,
-        vx: float,
-        ref_y_fn: Callable[[np.ndarray], np.ndarray],
-        lookahead_x: float,
-    ) -> PipelineOutput:
+def step(
+    self,
+    x_ego: float,
+    y_ego: float,
+    yaw_ego: float,
+    vx: float,
+    ref_y_fn: Callable[[np.ndarray], np.ndarray],
+    lookahead_x: float,
+) -> PipelineOutput:
+    global_xs = x_ego + self.sample_xs
+    global_ys = ref_y_fn(global_xs)
+
+    points = np.column_stack([global_xs, global_ys])
+
+    local_points = self.g2l.convert(points, yaw_ego, x_ego, y_ego)
+
+    coeff = self.fitter.fit(local_points)
+
+    self.ev.calculate(coeff, self.x_local.reshape(-1))
+    fit_local_points = self.ev.points.copy()
+
+    delta = self.controller.step(coeff, vx)
+
+    y_lh = _polyval_at(coeff, lookahead_x)
+    lookahead_local = (lookahead_x, y_lh)
+
+    return PipelineOutput(
+        delta=float(delta),
+        coeff=coeff,
+        fit_local_points=fit_local_points,
+        lookahead_local=(float(lookahead_local[0]), float(lookahead_local[1])),
+    )
+
         # TODO: 주입된 객체들을 호출해 perception → fit → control 흐름을 완성.
         # 1) global ref points: ego.X 로부터 self.sample_xs offset 으로 sampling
         #    x_global = x_ego + self.sample_xs

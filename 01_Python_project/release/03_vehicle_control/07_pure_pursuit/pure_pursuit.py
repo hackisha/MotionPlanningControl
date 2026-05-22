@@ -20,6 +20,11 @@ class PurePursuit:
         self.lookahead_time = lookahead_time
 
     def step(self, coeff: np.ndarray, vx: float) -> float:
+        d_lh = self.lookahead_time * vx
+        y_lh = _polyval_at(coeff, d_lh)
+        delta = np.arctan2(2 * self.L * y_lh, d_lh ** 2 + y_lh ** 2 + _EPS)
+        return delta
+    
         # TODO: Pure Pursuit 식을 구현하시오 (stateless — 내부 상태 없음).
         # 1) d_lh = lookahead_time · vx
         # 2) y_lh = _polyval_at(coeff, d_lh)

@@ -15,6 +15,16 @@ class KinematicLateralPID:
         self.error_sum: float = 0.0
 
     def step(self, reference_Y: float, ego_Y: float) -> float:
+        error = reference_Y - ego_Y
+        if self.prev_error is None:
+            d_error = 0.0
+        else:
+            d_error = (error - self.prev_error) / self.dt
+        self.error_sum += error * self.dt
+        u = self.kp * error + self.kd * d_error + self.ki
+        self.prev_error = error
+        return u
+            
         # TODO: Y reference 추종 PID 를 구현하시오.
         # - error = reference_Y - ego_Y
         # - 첫 호출 D=0

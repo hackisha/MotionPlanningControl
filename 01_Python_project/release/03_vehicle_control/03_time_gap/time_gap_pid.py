@@ -17,6 +17,20 @@ class TimeGapPID:
         self.error_sum: float = 0.0
 
     def step(self, target_x: float, ego_x: float, ego_vx: float) -> float:
+        target_space = ego_vx * self.time_gap
+        error = (target_x - ego_x) - target_space
+        if self.prev_error is None:
+            d_error = 0.0
+        else:
+            d_error = (error - self.prev_error) / self.dt
+        self.error_sum += error * self.dt
+        u = self.kp * error + self.kd * d_error + self.ki
+        self.prev_error = error
+        return u
+    
+
+    
+    
         # TODO: 시간 간격 기반 PID 를 구현하시오.
         # - target_space = ego_vx * time_gap   (매 스텝 재계산 — ego_vx 변화 반영)
         # - error = (target_x - ego_x) - target_space

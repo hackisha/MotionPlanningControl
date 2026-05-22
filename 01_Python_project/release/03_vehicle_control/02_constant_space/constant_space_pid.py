@@ -17,6 +17,16 @@ class ConstantSpacePID:
         self.error_sum: float = 0.0
 
     def step(self, target_x: float, ego_x: float) -> float:
+        error = (target_x - ego_x) - self.target_space
+        if self.prev_error is None:
+            d_error = 0.0
+        else:
+            d_error = (error - self.prev_error) / self.dt
+        self.error_sum += error * self.dt
+        u = self.kp * error + self.kd * d_error + self.ki * self.error_sum
+        self.prev_error = error
+        return u
+    
         # TODO: 상대 거리 기반 PID 를 구현하시오.
         # - error = (target_x - ego_x) - target_space   (부호 주의)
         # - 첫 호출 D=0

@@ -21,6 +21,8 @@ from plotly.subplots import make_subplots
 
 # 05_frame_transform 의 구현을 sys.path 로 직접 import (frame_transform 패턴).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "05_frame_transform"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from debug_signals import DebugSignals
 from frame_transform import Global2Local, PolynomialFitting, PolynomialValue
 from lateral_pipeline_stanley import LateralPipeline  # 본 폴더 (per-problem 사본)
 from stanley import Stanley
@@ -76,6 +78,7 @@ def main() -> None:
     err_arr = np.zeros(steps)
     fit_curves: list[list[list[float]]] = []
     lookahead_pts: list[list[float]] = []  # Stanley 는 cross-track 사용 → lookahead_x=0 (ego 위치)
+    dbg = DebugSignals()  # 디버그 신호 수집기 — 신호 추가/삭제는 아래 dbg.add() 한 줄
     for i in range(steps):
         X[i] = plant.X
         Y[i] = plant.Y

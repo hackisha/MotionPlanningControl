@@ -1,6 +1,6 @@
 """Kalman Filter 2D — matrix state-space (위치 + 속도).
 
-과제 명세는 README.md 참조.
+과제 명세는 problem.html 참조.
 """
 from __future__ import annotations
 
@@ -21,20 +21,6 @@ class KalmanFilter2D:
         self.P = P0 if P0 is not None else 10.0 * np.eye(2)
 
     def step(self, measurement: float, control_input: float) -> np.ndarray:
-        x_pred = self.A @ self.x + self.B * control_input
-        P_pred = self.A @ self.P @ self.A.T + self.Q
-        
-        S = self.C @ P_pred @ self.C + self.R
-        K = (P_pred @ self.C) / S
-        innovation = measurement - self.C @ x_pred
-        x_new = x_pred + K * innovation
-        P_new = (np.eye(2) - np.outer(K, self.C)) @ P_pred
-        self.x = x_new
-        self.P = P_new
-        return self.x
-    
-
-
         # TODO: 행렬 형태의 Kalman Predict + Update 를 작성하시오.
         # Predict:
         #   x_pred = A @ x + B * u

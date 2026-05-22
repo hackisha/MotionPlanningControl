@@ -10,14 +10,14 @@ wrapper (재사용 + 기본 스캔 경로만 chapter 2 로).
 
 Usage (git root cwd 기준):
     # 1) 인자 없이 - 스크립트 폴더 하위 모든 record*.json 멀티 로드
-    uv run python 01_Python_project_refactored/solutions/02_pid/simulator_pid.py
+    uv run python 01_Python_project/solutions/02_pid/simulator_pid.py
 
     # 2) 파일 또는 디렉토리 지정
-    uv run python 01_Python_project_refactored/solutions/02_pid/simulator_pid.py \\
-        01_Python_project_refactored/solutions/02_pid/01_p_controller/
+    uv run python 01_Python_project/solutions/02_pid/simulator_pid.py \\
+        01_Python_project/solutions/02_pid/01_p_controller/
 
     # 카메라 모드 (기본 follow)
-    uv run python 01_Python_project_refactored/solutions/02_pid/simulator_pid.py \\
+    uv run python 01_Python_project/solutions/02_pid/simulator_pid.py \\
         --camera fixed
 """
 from __future__ import annotations

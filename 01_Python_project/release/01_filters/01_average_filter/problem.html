@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>과제 — Average Filter (누적 평균 필터)</title>
+  <style>
+    :root {
+      --ink: #1a2330;
+      --muted: #5b6675;
+      --line: #d9dee6;
+      --accent: #1f6feb;
+      --accent-soft: #e8f0fe;
+      --warn: #b3541e;
+      --warn-soft: #fdf0e6;
+      --ok: #1f7a3d;
+      --code-bg: #f4f6f9;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      line-height: 1.7;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 28px 96px;
+      background: #fff;
+    }
+
+    h1 {
+      font-size: 1.7rem;
+      margin: 0 0 4px;
+      letter-spacing: -0.01em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.98rem;
+      margin-bottom: 28px;
+    }
+
+    h2 {
+      font-size: 1.18rem;
+      margin: 38px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--line);
+    }
+
+    h2 .num {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.82rem;
+      width: 1.55em;
+      height: 1.55em;
+      line-height: 1.55em;
+      text-align: center;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: 1px;
+    }
+
+    h3 {
+      font-size: 1.02rem;
+      margin: 22px 0 6px;
+    }
+
+    p {
+      margin: 8px 0;
+    }
+
+    code {
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .scenario-card {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 1.02rem;
+    }
+
+    .formula {
+      background: #fbfcfe;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 14px 0;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.96rem;
+    }
+
+    .formula .lbl {
+      color: var(--muted);
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 0.94rem;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--code-bg);
+      font-weight: 600;
+    }
+
+    ul,
+    ol {
+      margin: 8px 0;
+      padding-left: 24px;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    .note {
+      background: var(--warn-soft);
+      border-left: 4px solid var(--warn);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 0.94rem;
+    }
+
+    .note b {
+      color: var(--warn);
+    }
+
+    .fig {
+      margin: 22px 0;
+      text-align: center;
+    }
+
+    .fig figcaption {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-top: 8px;
+    }
+
+    .pass-list li {
+      margin: 8px 0;
+    }
+
+    .pass-list b {
+      color: var(--ok);
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-left: 6px;
+      vertical-align: 2px;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 32px 0;
+    }
+
+    .footer {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Average Filter — 누적 평균으로 잡음 줄이기</h1>
+  <p class="subtitle">Chapter 1 · Filters / 01_average_filter &nbsp;|&nbsp; 상태(state) 기반 클래스 설계의 첫 걸음</p>
+
+  <div class="scenario-card">
+    센서가 매 순간 잡음 섞인 값을 내보냅니다.
+    들어오는 측정값을 <b>누적 평균</b>하여 신호를 안정화하는 필터를 설계해 보세요.
+  </div>
+
+  <h2><span class="num">1</span>문제 상황</h2>
+  <p>
+    실제 센서는 항상 잡음을 포함합니다. 예를 들어 거리 센서가 매 시간 스텝마다
+    "참값 + 잡음" 을 출력할 때, 지금까지 들어온 모든 측정값을 평균하면
+    잡음이 점점 줄어들어 참값에 가까워집니다.
+  </p>
+  <p>
+    단, 전체 측정값을 배열로 저장해 두고 매번 다시 합산하는 방식은
+    데이터가 많아질수록 느려집니다. 내부 상태(<b>표본 수</b>와 <b>현재 평균</b>)만
+    기억하는 <b>재귀 갱신</b> 방식으로 구현하는 것이 목표입니다.
+  </p>
+
+  <div class="fig">
+    <svg viewBox="0 0 700 160" width="100%" style="max-width:680px" xmlns="http://www.w3.org/2000/svg"
+      aria-label="average filter diagram">
+      <!-- noisy signal dots -->
+      <text x="10" y="30" font-size="13" fill="#5b6675">측정값 (잡음 포함)</text>
+      <circle cx="60"  cy="80" r="5" fill="#e05252" opacity="0.7"/>
+      <circle cx="100" cy="55" r="5" fill="#e05252" opacity="0.7"/>
+      <circle cx="140" cy="100" r="5" fill="#e05252" opacity="0.7"/>
+      <circle cx="180" cy="60" r="5" fill="#e05252" opacity="0.7"/>
+      <circle cx="220" cy="90" r="5" fill="#e05252" opacity="0.7"/>
+      <!-- arrow -->
+      <rect x="255" y="70" width="120" height="36" rx="8" fill="#1f6feb"/>
+      <text x="315" y="93" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">AverageFilter</text>
+      <line x1="235" y1="88" x2="252" y2="88" stroke="#1f6feb" stroke-width="2.5"/>
+      <polygon points="252,88 244,83 244,93" fill="#1f6feb"/>
+      <line x1="375" y1="88" x2="410" y2="88" stroke="#1f6feb" stroke-width="2.5"/>
+      <polygon points="410,88 402,83 402,93" fill="#1f6feb"/>
+      <!-- smooth output line -->
+      <text x="420" y="30" font-size="13" fill="#5b6675">추정 평균 (안정화)</text>
+      <polyline points="420,88 460,84 500,83 540,82 580,82 620,81"
+                stroke="#1f6feb" stroke-width="2.5" fill="none"/>
+      <line x1="420" y1="75" x2="620" y2="75"
+            stroke="#1a2330" stroke-width="1.2" stroke-dasharray="6 4" opacity="0.4"/>
+      <text x="625" y="79" font-size="11" fill="#1a2330" opacity="0.5">참값</text>
+    </svg>
+    <figcaption>그림 1. 잡음 섞인 측정값이 AverageFilter 를 거쳐 점점 참값에 수렴하는 누적 평균으로 출력된다.</figcaption>
+  </div>
+
+  <h2><span class="num">2</span>주어진 환경</h2>
+  <p>
+    <code>demo.py</code> 는 평균 5, 표준편차 1 인 정규분포 <code>N(5, 1)</code> 에서 200개
+    표본을 뽑아 필터를 통과시키고 plotly 그래프로 보여줍니다.
+    구현 전에 실행하면 <code>NotImplementedError</code> 가 발생합니다.
+  </p>
+  <p>
+    <code>test_average_filter.py</code> 는 두 가지 시나리오로 합격 여부를 검증합니다.
+    알고리즘 형태는 자유 — 동작 명세(behavioral spec)만 봅니다.
+  </p>
+
+  <h2><span class="num">3</span>구현 과제</h2>
+  <p>
+    <code>average_filter.py</code> 의 <code>AverageFilter.step()</code> 메소드를 구현하세요.
+    클래스 골격과 시그니처는 이미 주어져 있습니다.
+  </p>
+  <pre>class AverageFilter:
+    def __init__(self): ...
+
+    def step(self, x: float) -> float
+        """새 측정값 x 를 받아 갱신된 누적 평균을 반환."""</pre>
+  <table>
+    <tr><th>인자/반환</th><th>의미</th></tr>
+    <tr>
+      <td><code>x</code></td>
+      <td>새로 들어온 측정값</td>
+    </tr>
+    <tr>
+      <td><b>반환</b></td>
+      <td>지금까지의 누적 평균 (첫 호출에서는 <code>x</code> 자체)</td>
+    </tr>
+  </table>
+  <ul>
+    <li>내부 상태로 <b>표본 수</b>와 <b>현재 평균</b>만 보관 — 전체 입력 배열 저장 금지.</li>
+    <li>첫 호출(<code>n=1</code>)에서는 <code>x</code> 그대로 반환되어야 합니다.</li>
+  </ul>
+
+  <h3>게인·파라미터 튜닝</h3>
+  <p>
+    이 과제에서 구현하는 것은 <b>알고리즘 로직</b> 입니다 — 라이브러리 코드의 시그니처는
+    고정이고 본문(<code># TODO</code>)만 채웁니다. 게인·파라미터의 실제 <b>값</b> 은 코드가
+    아니라 실행 파일에서 정하며, 세 군데의 역할이 다릅니다.
+  </p>
+  <ul>
+    <li><b>라이브러리 코드</b> (구현 대상) — 알고리즘만 구현. 게인·파라미터는 매개변수로 받기만 하고 값은 담지 않음.</li>
+    <li><b>producer</b> (<code>record_gen.py</code> / <code>demo.py</code>) — 게인·파라미터 값을 정하는 곳. <b>release 기본값은 0</b> 이라 그대로 실행하면 응답이 없거나 오류가 납니다 → 직접 값을 채워 실행하며 응답 변화를 비교하세요 (자유롭게 변경 OK).</li>
+    <li><b><code>test_*.py</code></b> — 합격 기준 검증용 값. <b>변경 금지</b>.</li>
+  </ul>
+  <p>이 문제는 따로 튜닝할 게인·파라미터가 없습니다 — 알고리즘 구현에만 집중하세요.</p>
+
+  <h2><span class="num">4</span>실행 방법</h2>
+  <p>모든 명령은 git 저장소 루트에서 실행합니다.</p>
+
+  <h3>구현 파일</h3>
+  <pre>01_Python_project/release/01_filters/01_average_filter/average_filter.py</pre>
+
+  <h3>테스트 — 합격 기준 검증</h3>
+  <pre>uv run pytest 01_Python_project/release/01_filters/01_average_filter/ -v</pre>
+
+  <h3>데모 — 시각적 확인 (구현 후)</h3>
+  <pre>uv run python 01_Python_project/release/01_filters/01_average_filter/demo.py</pre>
+  <p>
+    기본 브라우저 새 탭에 <code>N(5, 1)</code> 노이즈 샘플과 누적 평균 추정 곡선이
+    plotly 인터랙티브 그래프로 표시됩니다.
+    <code>demo.py</code> 에는 별도 파라미터가 없습니다.
+  </p>
+
+  <h2><span class="num">5</span>합격 기준 <span class="tag">pytest</span></h2>
+  <p>알고리즘 형태는 자유 — 동작 명세만 검증합니다.</p>
+  <ol class="pass-list">
+    <li><b>상수 입력 안정성</b> — <code>step(2.0)</code> 을 100회 반복 호출 시 출력이 <code>2.0</code> 유지 (오차 &lt; 1e-6).</li>
+    <li><b>노이즈 추적 RMS</b> — 상수 truth=5 + <code>N(0, 1)</code> 노이즈 1만 표본, warm-up(100 표본) 이후 RMS 오차 &lt; 0.1.</li>
+  </ol>
+
+  <h2><span class="num">6</span>힌트</h2>
+  <ul>
+    <li>재귀 형태로 누적 평균을 갱신하면 전체 배열 없이 O(1) 로 동작합니다.</li>
+    <li>일반 갱신식: <code>다음 평균 = 이전 평균 + (새 측정값 − 이전 평균) / 표본수</code></li>
+    <li>표본 수를 갱신하는 시점(분모로 쓰기 전/후)에 주의하세요 — 순서가 틀리면 첫 표본 통과 테스트가 실패합니다.</li>
+  </ul>
+
+  <h2><span class="num">7</span>제약</h2>
+  <ul>
+    <li><code>test_average_filter.py</code> — <b>수정 금지</b> (검증 환경).</li>
+    <li><code>step()</code> 의 시그니처 변경 금지.</li>
+    <li>전체 입력 배열(list/np.array)을 멤버로 저장하는 구현 금지 — 표본 수와 평균만 상태로 유지.</li>
+  </ul>
+
+  <hr>
+  <p class="footer">
+    IVS — Intelligent Vehicle Systems · Chapter 1 Filters · 01_average_filter<br>
+    구현 파일: <code>average_filter.py</code> · 검증: <code>pytest</code> · 시각화: <code>demo.py</code> (plotly)
+  </p>
+
+</body>
+</html>

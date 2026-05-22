@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>과제 — 이동 타겟 추종 Path Planning</title>
+  <style>
+    :root {
+      --ink: #1a2330;
+      --muted: #5b6675;
+      --line: #d9dee6;
+      --accent: #1f6feb;
+      --accent-soft: #e8f0fe;
+      --warn: #b3541e;
+      --warn-soft: #fdf0e6;
+      --ok: #1f7a3d;
+      --code-bg: #f4f6f9;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      line-height: 1.7;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 28px 96px;
+      background: #fff;
+    }
+
+    h1 {
+      font-size: 1.7rem;
+      margin: 0 0 4px;
+      letter-spacing: -0.01em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.98rem;
+      margin-bottom: 28px;
+    }
+
+    h2 {
+      font-size: 1.18rem;
+      margin: 38px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--line);
+    }
+
+    h2 .num {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.82rem;
+      width: 1.55em;
+      height: 1.55em;
+      line-height: 1.55em;
+      text-align: center;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: 1px;
+    }
+
+    h3 {
+      font-size: 1.02rem;
+      margin: 22px 0 6px;
+    }
+
+    p {
+      margin: 8px 0;
+    }
+
+    code {
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .scenario-card {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 1.02rem;
+    }
+
+    .formula {
+      background: #fbfcfe;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 14px 0;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.96rem;
+    }
+
+    .formula .lbl {
+      color: var(--muted);
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 0.94rem;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--code-bg);
+      font-weight: 600;
+    }
+
+    ul,
+    ol {
+      margin: 8px 0;
+      padding-left: 24px;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    .note {
+      background: var(--warn-soft);
+      border-left: 4px solid var(--warn);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 0.94rem;
+    }
+
+    .note b {
+      color: var(--warn);
+    }
+
+    .fig {
+      margin: 22px 0;
+      text-align: center;
+    }
+
+    .fig figcaption {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-top: 8px;
+    }
+
+    .pass-list li {
+      margin: 8px 0;
+    }
+
+    .pass-list b {
+      color: var(--ok);
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-left: 6px;
+      vertical-align: 2px;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 32px 0;
+    }
+
+    .footer {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>이동 타겟 추종 — Following Moving Target</h1>
+  <p class="subtitle">Chapter 4 · Path Planning / 03_following_moving_target &nbsp;|&nbsp; 앞 차량의 자취를 path 로 만들어 추종</p>
+
+  <div class="scenario-card">
+    앞 차량(leading)이 차로 중앙을 따라가는 동안, 뒤따르는 ego 가 leading 의
+    <b>위치 history</b> 를 누적해 그 자취를 <b>cubic path</b> 로 추종해 보세요.
+  </div>
+
+  <h2><span class="num">1</span>문제 상황</h2>
+  <p>
+    01·02 는 차선이 path 의 출처였습니다. 이번에는 차선 대신 <b>앞 차량</b>이 path 의 출처입니다 —
+    leading 이 지나간 자리를 따라 ego 가 주행합니다.
+  </p>
+  <p>
+    <b>핵심 아이디어:</b> leading 의 위치를 매 스텝 ego 의 <b>local frame</b> 으로 측정해 history 로 쌓습니다.
+    ego 자신이 움직일 때마다 그 history 점들을 새 ego frame 으로 갱신(역회전 + 역시프트)하고,
+    충분히 쌓이면 그 점들을 지나는 3차 다항식으로 path 를 만듭니다.
+  </p>
+
+  <div class="fig">
+    <svg viewBox="0 0 860 250" width="100%" style="max-width:820px" xmlns="http://www.w3.org/2000/svg"
+      aria-label="following moving target diagram">
+      <rect x="0" y="20" width="860" height="210" fill="#eef1f5" />
+      <line x1="0" y1="70" x2="860" y2="70" stroke="#fff" stroke-width="4" />
+      <line x1="0" y1="190" x2="860" y2="190" stroke="#fff" stroke-width="4" />
+      <!-- leading trajectory (history points) -->
+      <path d="M210,150 Q360,90 520,140 T800,110" fill="none" stroke="#e0a32e" stroke-width="3"
+        stroke-dasharray="13 9" />
+      <circle cx="300" cy="116" r="4" fill="#8a8f99" />
+      <circle cx="400" cy="108" r="4" fill="#8a8f99" />
+      <circle cx="500" cy="135" r="4" fill="#8a8f99" />
+      <circle cx="620" cy="128" r="4" fill="#8a8f99" />
+      <!-- ego (blue, behind) -->
+      <g>
+        <rect x="170" y="137" width="74" height="26" rx="6" fill="#1f6feb" />
+        <circle cx="188" cy="165" r="8" fill="#2a2f3a" />
+        <circle cx="226" cy="165" r="8" fill="#2a2f3a" />
+        <text x="207" y="155" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">EGO</text>
+      </g>
+      <!-- leading (grey, ahead) -->
+      <g>
+        <rect x="755" y="93" width="74" height="26" rx="6" fill="#8a8f99" />
+        <circle cx="773" cy="121" r="8" fill="#2a2f3a" />
+        <circle cx="811" cy="121" r="8" fill="#2a2f3a" />
+        <text x="792" y="111" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">LEAD</text>
+      </g>
+      <text x="430" y="78" text-anchor="middle" fill="#b3801e" font-size="12" font-weight="700">leading 의 자취 → cubic path</text>
+    </svg>
+    <figcaption>그림 1. ego 가 leading 의 위치 history 를 쌓아 그 자취를 지나는 3차 path 로 추종한다.</figcaption>
+  </div>
+
+  <h2><span class="num">2</span>주어진 환경</h2>
+  <p>
+    leading 차량은 record_gen 이 Chapter 3 의 lane keep 으로 운전합니다. ego 는 여러분이 만든
+    path 를 <code>PurePursuit</code> 으로 추종합니다.
+  </p>
+  <ul>
+    <li><code>lane_following.py</code> — leading 이 달리는 sinusoidal 차로 시나리오.</li>
+    <li><code>vehicle_lat_following.py</code> — ego·leading 의 lateral 차량 모델.</li>
+    <li><code>PurePursuit</code> — Chapter 3 컨트롤러. leading 운전용·ego 추종용으로 각각 쓰입니다.</li>
+  </ul>
+
+  <h2><span class="num">3</span>구현 과제</h2>
+  <p>
+    <code>target_following_planner.py</code> 의 클래스·함수 본문(<code># TODO</code>)을 구현하세요.
+    시그니처는 이미 주어져 있습니다.
+  </p>
+  <pre>class LeadingTargetTracker:
+    def __init__(self, max_history: int = 5): ...
+
+    def update(self, target_local_xy: list[float],
+               vx: float, yaw_rate: float, dt: float) -> None
+        """leading 의 새 측정을 누적하고, 기존 history 를 새 ego frame 으로 갱신."""
+
+def target_following_path(history: list[list[float]]) -> np.ndarray
+    """history 점들을 지나는 cubic path 계수 (4, 1) 을 반환."""</pre>
+  <table>
+    <tr>
+      <th>요소</th>
+      <th>역할</th>
+    </tr>
+    <tr>
+      <td><code>LeadingTargetTracker.update</code></td>
+      <td>새 측정을 history 에 추가하고, ego 가 한 스텝 움직인 만큼 기존 점들을 새 frame 으로 변환. 윈도우 길이 초과 시 가장 오래된 항목 제거.</td>
+    </tr>
+    <tr>
+      <td><code>target_following_path</code></td>
+      <td>history 점들로 3차 다항식 path 계수를 합성. 점이 부족하면 zero coeff.</td>
+    </tr>
+  </table>
+
+  <h3>게인·파라미터 튜닝</h3>
+  <p>
+    이 과제에서 구현하는 것은 <b>알고리즘 로직</b> 입니다 — 라이브러리 코드의 시그니처는
+    고정이고 본문(<code># TODO</code>)만 채웁니다. 게인·파라미터의 실제 <b>값</b> 은 코드가
+    아니라 실행 파일에서 정하며, 세 군데의 역할이 다릅니다.
+  </p>
+  <ul>
+    <li><b>라이브러리 코드</b> (구현 대상) — 알고리즘만 구현. 게인·파라미터는 매개변수로 받기만 하고 값은 담지 않음.</li>
+    <li><b>producer</b> (<code>record_gen.py</code>) — 게인·파라미터 값을 정하는 곳. <b>release 기본값은 0</b> 이라 그대로
+      실행하면 응답이 없거나 오류가 납니다 → 직접 값을 채워 실행하며 응답 변화를 비교하세요 (자유롭게 변경 OK).</li>
+    <li><b><code>test_*.py</code></b> — 합격 기준 검증용 값. <b>변경 금지</b>.</li>
+  </ul>
+  <p><b>이 문제에서 바꾸는 줄</b> — <code>record_gen.py</code> 의 아래 줄(ego 추종 컨트롤러). release 기본값은 0 이니
+    값을 채우세요. leading 운전용 <code>pp_lead</code> 는 시나리오 fixture 라 그대로 둡니다:</p>
+  <pre>    pp_ego = PurePursuit(L=4.0, lookahead_time=0.0)</pre>
+
+  <h2><span class="num">4</span>실행 방법</h2>
+  <p>모든 명령은 git 저장소 루트에서 실행합니다.</p>
+
+  <h3>구현 파일</h3>
+  <pre>01_Python_project/release/04_path_planning/03_following_moving_target/target_following_planner.py</pre>
+
+  <h3>테스트 — 합격 기준 검증</h3>
+  <pre>uv run pytest 01_Python_project/release/04_path_planning/03_following_moving_target/ -v</pre>
+
+  <h3>시나리오 실행 → record JSON 생성 + Rerun viewer 자동 실행</h3>
+  <pre>uv run python 01_Python_project/release/04_path_planning/03_following_moving_target/record_gen.py</pre>
+  <p>
+    회색 leading 이 sinusoidal 차로 중앙을 달리고, 파란 ego 가 약 10 m 뒤에서 leading 의 자취를
+    cubic path(노란 곡선)로 추종합니다. ego 의 <code>lookahead_time</code> 은 release 기본값이 <code>0</code> 이라
+    그대로 실행하면 추종이 되지 않습니다 — <code>record_gen.py</code> 안에서 직접 값을 채우세요.
+    JSON 만 만들려면 <code>--no-viewer</code> 를 붙입니다.
+  </p>
+
+  <h3>Rerun viewer 재생</h3>
+  <pre>uv run python 01_Python_project/release/04_path_planning/simulator_path_planning.py 01_Python_project/release/04_path_planning/03_following_moving_target/</pre>
+
+  <h3>디버그 신호 — 심화 분석 (선택)</h3>
+  <p>
+    <code>record_gen.py</code> 의 <code>dbg.add(...)</code> 블록에는 <code>debug1/2/3</code> 주석
+    placeholder 가 준비돼 있습니다. 주석을 풀고 분석하고 싶은 값·식(예: 추적 오차, 내부 상태)을
+    채우면 그 신호가 record 에 함께 저장됩니다 — 신호 추가·삭제·수정은 이 <code>dbg.add()</code>
+    호출의 kwarg 한 줄로 끝납니다.
+  </p>
+  <p>
+    디버그 신호는 viewer 기본 화면에는 나타나지 않습니다 — Rerun viewer 좌측 entity 패널에서
+    <code>/debug/&lt;이름&gt;</code> 항목을 골라 TimeSeriesView 를 직접 추가하면 시계열로 볼 수 있습니다.
+    구현이 막힐 때 내부 신호를 들여다보는 디버깅 도구로 활용하세요.
+  </p>
+
+  <h2><span class="num">5</span>합격 기준 <span class="tag">pytest</span></h2>
+  <p>알고리즘 형태(history 변환·cubic 합성 디테일)는 자유 — 동작 명세(behavioral spec)만 검증합니다.</p>
+  <ol class="pass-list">
+    <li><b>인터페이스</b> — history 가 4점 이상이면 <code>(4, 1)</code> column 반환, 4점 미만이면 zero coeff.</li>
+    <li><b>윈도우 동작</b> — <code>LeadingTargetTracker</code> 가 <code>max_history</code> 초과 시 가장 오래된 항목 제거.</li>
+    <li><b>폐루프 추종</b> — leading 이 lane keep, ego 가 그 자취를 추종, 30초 동안 tail 평균
+      <code>|follow_err| &lt; 0.5 m</code>, peak <code>&lt; 1.5 m</code>, 충돌 없음(<code>min gap &gt; 0</code>).</li>
+  </ol>
+  <div class="note">
+    <b>주의:</b> history 의 회전·시프트 변환이 어긋나면 path 가 빗나가 임계값을 초과합니다.
+  </div>
+
+  <h2><span class="num">6</span>힌트</h2>
+  <ul>
+    <li><b>왜 history 를 변환하나</b> — history 점은 <b>ego local frame</b> 좌표입니다. ego 가 한 스텝 움직이면
+      frame 자체가 회전·전진하므로, 직전 점들도 새 frame 기준으로 다시 표현해야 합니다 (역회전 후 역시프트).</li>
+    <li><b>회전량</b> 은 <code>yaw_rate · dt</code>, <b>전진량</b> 은 <code>vx · dt</code> 입니다. <code>yaw_rate</code> 가
+      거의 0(직진)일 때와 곡선일 때의 시프트 식이 다릅니다 — 0 나눗셈에 주의하세요.</li>
+    <li><b>cubic path</b> — history 점들을 polyfit 한 뒤, ego origin <code>(0, 0)</code> 을 지나고 시작 heading 이
+      0 이 되도록 제약을 거는 3차 다항식을 만듭니다. 점이 4개 미만이면 안전하게 zero coeff 를 반환하세요.</li>
+    <li>윈도우는 <code>append</code> 후 길이 초과 시 가장 오래된 항목을 <code>pop(0)</code> 하면 유지됩니다.</li>
+  </ul>
+
+  <h2><span class="num">7</span>제약</h2>
+  <ul>
+    <li><code>lane_following.py</code>, <code>vehicle_lat_following.py</code>, <code>record_gen.py</code>,
+      <code>test_following_target.py</code> — <b>수정 금지</b> (검증 환경).</li>
+    <li>클래스·함수의 시그니처 변경 금지.</li>
+    <li>Chapter 3 의 <code>frame_transform</code>·<code>pure_pursuit</code>, 같은 폴더의
+      <code>01_both_lane/both_lane_planner.py</code> 는 <code>sys.path</code> import 만 — 수정 금지.</li>
+    <li>게인(<code>lookahead_time</code>)은 <code>record_gen.py</code> 에서 실험 — release 기본값은 0 이며
+      <code>test_*.py</code> 의 값은 변경 금지.</li>
+  </ul>
+
+  <hr>
+  <p class="footer">
+    IVS — Intelligent Vehicle Systems · Chapter 4 Path Planning · 03_following_moving_target<br>
+    구현 파일: <code>target_following_planner.py</code> · 검증: <code>pytest</code> · 시각화: Rerun viewer
+  </p>
+
+</body>
+
+</html>

@@ -1,6 +1,6 @@
 """Low-Pass Filter — 1차 IIR (Exponential Moving Average).
 
-과제 명세는 README.md 참조.
+과제 명세는 problem.html 참조.
 """
 from __future__ import annotations
 
@@ -11,13 +11,6 @@ class LowPassFilter:
         self.y: float | None = None
 
     def step(self, x: float) -> float:
-        if self.y is None:
-                self.y = x
-        else:
-            self.y = self.alpha * self.y + (1 - self.alpha) * x
-        return self.y
-
-
         # TODO: 1차 IIR 형태의 저역 필터를 작성하시오.
         # 인터페이스: 매 호출마다 입력 x 를 받아 평활된 출력을 반환
         # 첫 호출에서는 self.y 가 None — x 자체를 그대로 반환 (초기값 보호)

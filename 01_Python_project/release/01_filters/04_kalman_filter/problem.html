@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>과제 — Kalman Filter (scalar 1D)</title>
+  <style>
+    :root {
+      --ink: #1a2330;
+      --muted: #5b6675;
+      --line: #d9dee6;
+      --accent: #1f6feb;
+      --accent-soft: #e8f0fe;
+      --warn: #b3541e;
+      --warn-soft: #fdf0e6;
+      --ok: #1f7a3d;
+      --code-bg: #f4f6f9;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      line-height: 1.7;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 28px 96px;
+      background: #fff;
+    }
+
+    h1 {
+      font-size: 1.7rem;
+      margin: 0 0 4px;
+      letter-spacing: -0.01em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.98rem;
+      margin-bottom: 28px;
+    }
+
+    h2 {
+      font-size: 1.18rem;
+      margin: 38px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--line);
+    }
+
+    h2 .num {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.82rem;
+      width: 1.55em;
+      height: 1.55em;
+      line-height: 1.55em;
+      text-align: center;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: 1px;
+    }
+
+    h3 {
+      font-size: 1.02rem;
+      margin: 22px 0 6px;
+    }
+
+    p {
+      margin: 8px 0;
+    }
+
+    code {
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .scenario-card {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 1.02rem;
+    }
+
+    .formula {
+      background: #fbfcfe;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 14px 0;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.96rem;
+    }
+
+    .formula .lbl {
+      color: var(--muted);
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 0.94rem;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--code-bg);
+      font-weight: 600;
+    }
+
+    ul,
+    ol {
+      margin: 8px 0;
+      padding-left: 24px;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    .note {
+      background: var(--warn-soft);
+      border-left: 4px solid var(--warn);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 0.94rem;
+    }
+
+    .note b {
+      color: var(--warn);
+    }
+
+    .fig {
+      margin: 22px 0;
+      text-align: center;
+    }
+
+    .fig figcaption {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-top: 8px;
+    }
+
+    .pass-list li {
+      margin: 8px 0;
+    }
+
+    .pass-list b {
+      color: var(--ok);
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-left: 6px;
+      vertical-align: 2px;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 32px 0;
+    }
+
+    .footer {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Kalman Filter — 모델과 측정을 결합한 1차원 추정기</h1>
+  <p class="subtitle">Chapter 1 · Filters / 04_kalman_filter &nbsp;|&nbsp; Predict → Update 두 단계로 불확실성을 줄이는 상태 추정</p>
+
+  <div class="scenario-card">
+    단순 평활 필터를 넘어, <b>시스템 모델</b>과 <b>측정</b>을 결합해 상태를 추정하는
+    칼만 필터(scalar 1D) 를 구현해 보세요.
+  </div>
+
+  <h2><span class="num">1</span>문제 상황</h2>
+  <p>
+    Average / Moving Average / LPF 는 측정값을 평균하거나 평활화하는 데 그쳤습니다.
+    칼만 필터는 여기서 한 발 더 나아가 시스템이 어떻게 움직이는지 기술하는
+    <b>동역학 모델</b>(Predict 단계) 과, 들어오는 측정이 얼마나 신뢰할 수 있는지를
+    나타내는 <b>측정 노이즈</b>(Update 단계) 를 결합합니다.
+  </p>
+  <p>
+    매 스텝마다 두 단계를 반복합니다.
+  </p>
+  <ul>
+    <li><b>Predict:</b> 시스템 모델로 다음 상태와 불확실성을 예측합니다.</li>
+    <li><b>Update:</b> 실제 측정값과의 차이(innovation)로 예측을 보정하고 불확실성을 줄입니다.</li>
+  </ul>
+
+  <div class="fig">
+    <svg viewBox="0 0 720 200" width="100%" style="max-width:700px" xmlns="http://www.w3.org/2000/svg"
+      aria-label="Kalman filter predict-update cycle">
+      <!-- Predict box -->
+      <rect x="40" y="70" width="180" height="60" rx="10" fill="#e8f0fe" stroke="#1f6feb" stroke-width="1.5"/>
+      <text x="130" y="96" text-anchor="middle" fill="#1f6feb" font-size="14" font-weight="700">Predict</text>
+      <text x="130" y="115" text-anchor="middle" fill="#1f6feb" font-size="11">모델로 다음 상태 예측</text>
+      <!-- Update box -->
+      <rect x="500" y="70" width="180" height="60" rx="10" fill="#e8f0fe" stroke="#1f6feb" stroke-width="1.5"/>
+      <text x="590" y="96" text-anchor="middle" fill="#1f6feb" font-size="14" font-weight="700">Update</text>
+      <text x="590" y="115" text-anchor="middle" fill="#1f6feb" font-size="11">측정으로 예측 보정</text>
+      <!-- Arrow Predict -> Update -->
+      <line x1="220" y1="100" x2="498" y2="100" stroke="#1f6feb" stroke-width="2"/>
+      <polygon points="498,100 488,95 488,105" fill="#1f6feb"/>
+      <text x="359" y="90" text-anchor="middle" fill="#5b6675" font-size="11">x_pred, P_pred</text>
+      <!-- Measurement input -->
+      <line x1="590" y1="30" x2="590" y2="68" stroke="#e05252" stroke-width="2"/>
+      <polygon points="590,68 585,60 595,60" fill="#e05252"/>
+      <text x="590" y="22" text-anchor="middle" fill="#e05252" font-size="12">측정값 z</text>
+      <!-- Output -->
+      <line x1="590" y1="130" x2="590" y2="168" stroke="#1f7a3d" stroke-width="2"/>
+      <polygon points="590,168 585,160 595,160" fill="#1f7a3d"/>
+      <text x="590" y="182" text-anchor="middle" fill="#1f7a3d" font-size="12">추정값 x (갱신)</text>
+      <!-- Feedback loop -->
+      <path d="M590,170 Q590,195 360,195 Q130,195 130,132"
+            stroke="#5b6675" stroke-width="1.5" fill="none" stroke-dasharray="6 4"/>
+      <polygon points="130,132 125,142 135,142" fill="#5b6675"/>
+      <text x="360" y="190" text-anchor="middle" fill="#5b6675" font-size="10">다음 스텝으로 피드백</text>
+      <!-- Control input -->
+      <line x1="130" y1="30" x2="130" y2="68" stroke="#e08a2e" stroke-width="2"/>
+      <polygon points="130,68 125,60 135,60" fill="#e08a2e"/>
+      <text x="130" y="22" text-anchor="middle" fill="#e08a2e" font-size="12">제어 입력 u</text>
+    </svg>
+    <figcaption>그림 1. 칼만 필터의 Predict → Update 사이클. 추정값은 다음 스텝의 Predict 로 피드백된다.</figcaption>
+  </div>
+
+  <h2><span class="num">2</span>주어진 환경</h2>
+  <p>
+    <code>__init__</code> 은 이미 작성되어 있습니다. 시스템 행렬 <code>A</code>, <code>B</code>, <code>C</code> 와
+    노이즈 파라미터 <code>Q</code>, <code>R</code>, 초기 추정 분산 <code>P = p0</code>,
+    초기 상태 <code>x = 0</code> 이 자동으로 설정됩니다.
+  </p>
+  <p>
+    <code>demo.py</code> 와 <code>tuning_demo.py</code> 의 <code>q</code>, <code>r</code>, <code>p0</code> 기본값은
+    <code>0</code> 입니다 — 직접 값을 채운 뒤 실행하며 추정 결과를 비교하세요.
+    <code>test_*.py</code> 의 파라미터는 변경 금지입니다.
+  </p>
+
+  <h2><span class="num">3</span>구현 과제</h2>
+  <p>
+    <code>kalman_filter.py</code> 의 <code>KalmanFilter.step()</code> 메소드를 구현하세요.
+    Predict 2줄, Update 3줄, return 1줄 — 총 6줄입니다.
+  </p>
+  <pre>class KalmanFilter:
+    def __init__(self, m: float = 1.0, dt: float = 0.01,
+                 q: float = 0.1, r: float = 0.9, p0: float = 10.0): ...
+
+    def step(self, measurement: float, control_input: float) -> float
+        """한 번의 Predict + Update 를 수행하고 갱신된 추정값을 반환."""</pre>
+  <table>
+    <tr><th>인자/반환</th><th>의미</th></tr>
+    <tr>
+      <td><code>measurement</code></td>
+      <td>현재 스텝의 측정값 z</td>
+    </tr>
+    <tr>
+      <td><code>control_input</code></td>
+      <td>현재 스텝의 외부 제어 입력 u</td>
+    </tr>
+    <tr>
+      <td><code>q</code></td>
+      <td>모델 불확실성(process noise variance) — 클수록 측정을 더 신뢰</td>
+    </tr>
+    <tr>
+      <td><code>r</code></td>
+      <td>측정 노이즈 분산 — 클수록 모델을 더 신뢰</td>
+    </tr>
+    <tr>
+      <td><b>반환</b></td>
+      <td>갱신된 상태 추정값 <code>self.x</code></td>
+    </tr>
+  </table>
+  <ul>
+    <li>Predict 결과를 임시 변수(<code>x_pred</code>, <code>p_pred</code>)에 저장한 뒤 Update 단계에서 사용하세요.</li>
+    <li>Predict 결과를 곧장 <code>self.x</code> 에 쓰면 Update 단계가 망가집니다.</li>
+  </ul>
+
+  <h3>게인·파라미터 튜닝</h3>
+  <p>
+    이 과제에서 구현하는 것은 <b>알고리즘 로직</b> 입니다 — 라이브러리 코드의 시그니처는
+    고정이고 본문(<code># TODO</code>)만 채웁니다. 게인·파라미터의 실제 <b>값</b> 은 코드가
+    아니라 실행 파일에서 정하며, 세 군데의 역할이 다릅니다.
+  </p>
+  <ul>
+    <li><b>라이브러리 코드</b> (구현 대상) — 알고리즘만 구현. 게인·파라미터는 매개변수로 받기만 하고 값은 담지 않음.</li>
+    <li><b>producer</b> (<code>record_gen.py</code> / <code>demo.py</code>) — 게인·파라미터 값을 정하는 곳. <b>release 기본값은 0</b> 이라 그대로 실행하면 응답이 없거나 오류가 납니다 → 직접 값을 채워 실행하며 응답 변화를 비교하세요 (자유롭게 변경 OK).</li>
+    <li><b><code>test_*.py</code></b> — 합격 기준 검증용 값. <b>변경 금지</b>.</li>
+  </ul>
+  <p><b>이 문제에서 바꾸는 줄</b> — <code>demo.py</code> 의 아래 줄. release 기본값은 0 이니 여기에 값을 채우세요:</p>
+  <pre>    kf = KalmanFilter(m=1.0, dt=0.01, q=0.0, r=0.0, p0=0.0)</pre>
+
+  <h2><span class="num">4</span>실행 방법</h2>
+  <p>모든 명령은 git 저장소 루트에서 실행합니다.</p>
+
+  <h3>구현 파일</h3>
+  <pre>01_Python_project/release/01_filters/04_kalman_filter/kalman_filter.py</pre>
+
+  <h3>테스트 — 합격 기준 검증</h3>
+  <pre>uv run pytest 01_Python_project/release/01_filters/04_kalman_filter/ -v</pre>
+
+  <h3>기본 데모 — 노이즈 측정 추정 (구현 후)</h3>
+  <pre>uv run python 01_Python_project/release/01_filters/04_kalman_filter/demo.py</pre>
+  <p>
+    상수 truth(5.0) + <code>N(0, 1)</code> 노이즈 측정 500 표본을 칼만으로 추정한 결과를 그래프로 보여줍니다.
+    <code>demo.py</code> 의 <code>q</code>/<code>r</code>/<code>p0</code> 기본값은 <code>0</code> — 직접 채워 응답 변화를 확인하세요.
+  </p>
+
+  <h3>튜닝 데모 — 4가지 (q, r) 조합 비교 (구현 후)</h3>
+  <pre>uv run python 01_Python_project/release/01_filters/04_kalman_filter/tuning_demo.py</pre>
+  <p>측정 추종 / 모델 의존 / 측정 그대로 / 균형의 4가지 조합이 한 화면에 비교됩니다.</p>
+
+  <h2><span class="num">5</span>합격 기준 <span class="tag">pytest</span></h2>
+  <p>알고리즘 형태는 자유 — 동작 명세만 검증합니다.</p>
+  <ol class="pass-list">
+    <li><b>무노이즈 + feedforward 안정성</b> — <code>q=0.01, r=1.0</code> 설정, 2000 스텝 후 추정값이 truth(5.0) 근방 (오차 &lt; 0.1).</li>
+    <li><b>노이즈 추적 RMS</b> — 같은 setup 에 <code>N(0, 1)</code> 노이즈 측정 1만 스텝, warm-up 이후 RMS 오차 &lt; 0.3.</li>
+  </ol>
+
+  <h2><span class="num">6</span>힌트</h2>
+  <ul>
+    <li>Predict 와 Update 두 단계를 분리해서 구현하세요 — Predict 결과를 임시 변수에 담고 Update 에서 사용합니다.</li>
+    <li>임시 변수 <code>x_pred</code>, <code>p_pred</code>, <code>k</code> 를 만들어 가독성을 확보하세요.</li>
+    <li>Update 의 <code>(1 - K·C)</code> 부호를 주의하세요 — 잘못 쓰면 P 가 발산합니다.</li>
+    <li>구현해야 할 6줄 알고리즘은 TODO 주석에 그대로 제시되어 있습니다 — 코드로 정확히 옮기는 연습이 핵심입니다.</li>
+  </ul>
+
+  <h2><span class="num">7</span>제약</h2>
+  <ul>
+    <li><code>test_kalman_filter.py</code> — <b>수정 금지</b> (검증 환경).</li>
+    <li><code>step()</code> 의 시그니처 변경 금지.</li>
+    <li><code>demo.py</code> / <code>tuning_demo.py</code> 의 파라미터 값은 자유롭게 변경 가능 — <code>test_*.py</code> 의 값은 변경 금지.</li>
+  </ul>
+
+  <hr>
+  <p class="footer">
+    IVS — Intelligent Vehicle Systems · Chapter 1 Filters · 04_kalman_filter<br>
+    구현 파일: <code>kalman_filter.py</code> · 검증: <code>pytest</code> · 시각화: <code>demo.py</code>, <code>tuning_demo.py</code> (plotly)
+  </p>
+
+</body>
+</html>

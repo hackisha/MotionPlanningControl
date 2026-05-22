@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>과제 — 양쪽 차선 평균 Path Planning</title>
+  <style>
+    :root {
+      --ink: #1a2330;
+      --muted: #5b6675;
+      --line: #d9dee6;
+      --accent: #1f6feb;
+      --accent-soft: #e8f0fe;
+      --warn: #b3541e;
+      --warn-soft: #fdf0e6;
+      --ok: #1f7a3d;
+      --code-bg: #f4f6f9;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      line-height: 1.7;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 28px 96px;
+      background: #fff;
+    }
+
+    h1 {
+      font-size: 1.7rem;
+      margin: 0 0 4px;
+      letter-spacing: -0.01em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.98rem;
+      margin-bottom: 28px;
+    }
+
+    h2 {
+      font-size: 1.18rem;
+      margin: 38px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--line);
+    }
+
+    h2 .num {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.82rem;
+      width: 1.55em;
+      height: 1.55em;
+      line-height: 1.55em;
+      text-align: center;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: 1px;
+    }
+
+    h3 {
+      font-size: 1.02rem;
+      margin: 22px 0 6px;
+    }
+
+    p {
+      margin: 8px 0;
+    }
+
+    code {
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .scenario-card {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 1.02rem;
+    }
+
+    .formula {
+      background: #fbfcfe;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 14px 0;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.96rem;
+    }
+
+    .formula .lbl {
+      color: var(--muted);
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 0.94rem;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--code-bg);
+      font-weight: 600;
+    }
+
+    ul,
+    ol {
+      margin: 8px 0;
+      padding-left: 24px;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    .note {
+      background: var(--warn-soft);
+      border-left: 4px solid var(--warn);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 0.94rem;
+    }
+
+    .note b {
+      color: var(--warn);
+    }
+
+    .fig {
+      margin: 22px 0;
+      text-align: center;
+    }
+
+    .fig figcaption {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-top: 8px;
+    }
+
+    .pass-list li {
+      margin: 8px 0;
+    }
+
+    .pass-list b {
+      color: var(--ok);
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-left: 6px;
+      vertical-align: 2px;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 32px 0;
+    }
+
+    .footer {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>양쪽 차선 평균 — Both Lane Path Planning</h1>
+  <p class="subtitle">Chapter 4 · Path Planning / 01_both_lane &nbsp;|&nbsp; 차선 인식 결과로부터 주행 path 를 만드는 첫 단계</p>
+
+  <div class="scenario-card">
+    좌·우 차선이 모두 인식된 도로에서, 두 차선의 <b>다항식 계수</b>로부터
+    차로 <b>중앙선 path</b> 의 계수를 만들어 보세요. ego 차량은 이 path 를
+    Chapter 3 의 <code>PurePursuit</code> 컨트롤러로 추종합니다.
+  </div>
+
+  <h2><span class="num">1</span>문제 상황</h2>
+  <p>
+    자율주행의 lateral 파이프라인은 <b>차선 인식 → path 생성 → 경로 추종</b> 순서로 흐릅니다.
+    Chapter 3 에서는 path(다항식 계수)가 이미 주어졌지만, 실제 차량은 카메라가 본
+    <b>좌·우 차선</b>을 먼저 path 로 바꿔야 합니다.
+  </p>
+  <ul>
+    <li>차선 인식 모듈이 좌측 차선과 우측 차선을 각각 <b>local frame 다항식 계수</b>로 넘겨줍니다.</li>
+    <li>여러분이 만들 것은 그 둘로부터 <b>차로 중앙</b>을 지나는 path 계수입니다.</li>
+    <li>이번 과제는 <b>양쪽 차선이 모두 valid</b> 한 가장 단순한 경우 — sinusoidal 도로입니다.</li>
+  </ul>
+
+  <div class="fig">
+    <svg viewBox="0 0 860 250" width="100%" style="max-width:820px" xmlns="http://www.w3.org/2000/svg"
+      aria-label="both lane to center path diagram">
+      <rect x="0" y="20" width="860" height="210" fill="#eef1f5" />
+      <!-- left lane (upper white curve) -->
+      <path d="M0,70 Q215,30 430,70 T860,70" fill="none" stroke="#fff" stroke-width="5" />
+      <!-- right lane (lower white curve) -->
+      <path d="M0,190 Q215,150 430,190 T860,190" fill="none" stroke="#fff" stroke-width="5" />
+      <!-- center path (dashed yellow) -->
+      <path d="M0,130 Q215,90 430,130 T860,130" fill="none" stroke="#e0a32e" stroke-width="3"
+        stroke-dasharray="14 10" />
+      <text x="20" y="58" fill="#3d4654" font-size="13" font-weight="600">좌측 차선 coeff_L</text>
+      <text x="20" y="210" fill="#3d4654" font-size="13" font-weight="600">우측 차선 coeff_R</text>
+      <text x="500" y="118" fill="#b3801e" font-size="13" font-weight="700">중앙선 path = ?</text>
+      <!-- ego vehicle -->
+      <g>
+        <rect x="120" y="116" width="74" height="26" rx="6" fill="#1f6feb" />
+        <circle cx="138" cy="144" r="8" fill="#2a2f3a" />
+        <circle cx="176" cy="144" r="8" fill="#2a2f3a" />
+        <text x="157" y="134" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">EGO</text>
+      </g>
+    </svg>
+    <figcaption>그림 1. 좌·우 차선 계수로부터 차로 중앙선 path 계수를 생성 — ego 는 그 path 를 추종한다.</figcaption>
+  </div>
+
+  <h2><span class="num">2</span>주어진 환경 — lateral 파이프라인</h2>
+  <p>
+    한 시간 스텝의 처리 흐름은 record_gen 이 모두 엮어 줍니다. 여러분이 채우는 것은
+    그 중 <b>path 생성</b> 한 칸뿐입니다.
+  </p>
+  <pre>차선 계수 (coeff_L, coeff_R)        ← lane_both.py 도로 + 차선 인식
+    │
+    ▼  both_lane_to_path()           ← 이번 과제 (구현 대상)
+중앙선 path 계수
+    │
+    ▼  PurePursuit.step()            ← Chapter 3 결과물 (재사용)
+조향각 δ
+    │
+    ▼  VehicleLat.step()             ← vehicle_lat_both.py 차량 모델</pre>
+  <ul>
+    <li><code>lane_both.py</code> — sinusoidal 도로와 좌·우 차선을 생성하는 시나리오 환경.</li>
+    <li><code>vehicle_lat_both.py</code> — ego 의 lateral 차량 모델.</li>
+    <li><code>PurePursuit</code> — Chapter 3 <code>07_pure_pursuit</code> 의 컨트롤러를 <code>sys.path</code> 로 import 해 재사용.</li>
+  </ul>
+
+  <h2><span class="num">3</span>구현 과제</h2>
+  <p>
+    <code>both_lane_planner.py</code> 의 <code>both_lane_to_path()</code> 함수 본문(<code># TODO</code>)을 구현하세요.
+    시그니처는 이미 주어져 있습니다.
+  </p>
+  <pre>def both_lane_to_path(coeff_L: np.ndarray, coeff_R: np.ndarray) -> np.ndarray
+    """좌·우 차선 계수로부터 중앙선 path 계수를 반환."""</pre>
+  <table>
+    <tr>
+      <th>인자</th>
+      <th>의미</th>
+    </tr>
+    <tr>
+      <td><code>coeff_L</code></td>
+      <td>좌측 차선 다항식 계수 — shape <code>(degree+1, 1)</code> column, 고차→저차 순</td>
+    </tr>
+    <tr>
+      <td><code>coeff_R</code></td>
+      <td>우측 차선 다항식 계수 — 같은 shape</td>
+    </tr>
+    <tr>
+      <td><b>반환</b></td>
+      <td>중앙선 path 계수 — 입력과 동일 shape <code>(degree+1, 1)</code> column</td>
+    </tr>
+  </table>
+  <ul>
+    <li><code>coeff_L</code> / <code>coeff_R</code> 은 Chapter 3 의 <code>PolynomialFitting.fit()</code> 출력 형태로,
+      local frame 의 좌/우 차선 다항식입니다.</li>
+    <li>numpy 배열 산술은 element-wise 라서 계수 결합을 직관적으로 작성할 수 있습니다.</li>
+  </ul>
+
+  <h3>게인·파라미터 튜닝</h3>
+  <p>
+    이 과제에서 구현하는 것은 <b>알고리즘 로직</b> 입니다 — 라이브러리 코드의 시그니처는
+    고정이고 본문(<code># TODO</code>)만 채웁니다. 게인·파라미터의 실제 <b>값</b> 은 코드가
+    아니라 실행 파일에서 정하며, 세 군데의 역할이 다릅니다.
+  </p>
+  <ul>
+    <li><b>라이브러리 코드</b> (구현 대상) — 알고리즘만 구현. 게인·파라미터는 매개변수로 받기만 하고 값은 담지 않음.</li>
+    <li><b>producer</b> (<code>record_gen.py</code>) — 게인·파라미터 값을 정하는 곳. <b>release 기본값은 0</b> 이라 그대로
+      실행하면 응답이 없거나 오류가 납니다 → 직접 값을 채워 실행하며 응답 변화를 비교하세요 (자유롭게 변경 OK).</li>
+    <li><b><code>test_*.py</code></b> — 합격 기준 검증용 값. <b>변경 금지</b>.</li>
+  </ul>
+  <p><b>이 문제에서 바꾸는 줄</b> — <code>record_gen.py</code> 의 아래 줄. release 기본값은 0 이니 여기에 값을 채우세요:</p>
+  <pre>    pp = PurePursuit(L=4.0, lookahead_time=0.0)</pre>
+
+  <h2><span class="num">4</span>실행 방법</h2>
+  <p>모든 명령은 git 저장소 루트에서 실행합니다.</p>
+
+  <h3>구현 파일</h3>
+  <pre>01_Python_project/release/04_path_planning/01_both_lane/both_lane_planner.py</pre>
+
+  <h3>테스트 — 합격 기준 검증</h3>
+  <pre>uv run pytest 01_Python_project/release/04_path_planning/01_both_lane/ -v</pre>
+
+  <h3>시나리오 실행 → record JSON 생성 + Rerun viewer 자동 실행</h3>
+  <pre>uv run python 01_Python_project/release/04_path_planning/01_both_lane/record_gen.py</pre>
+  <p>
+    파란 차량이 sinusoidal 도로의 차로 중앙선을 따라 주행합니다 — 양쪽 흰색 차선 + dashed 중앙선 +
+    매 step 의 planner path(노란 곡선)가 ego 앞으로 뻗습니다. <code>lookahead_time</code> 은 release
+    기본값이 <code>0</code> 이라 그대로 실행하면 추종이 되지 않습니다 — <code>record_gen.py</code> 안에서
+    직접 값을 채워 응답 변화를 비교하세요. JSON 만 만들고 viewer 를 띄우지 않으려면 <code>--no-viewer</code> 를 붙입니다.
+  </p>
+
+  <h3>Rerun viewer 재생</h3>
+  <pre>uv run python 01_Python_project/release/04_path_planning/simulator_path_planning.py 01_Python_project/release/04_path_planning/01_both_lane/</pre>
+  <p>
+    <code>simulator_path_planning.py</code> 를 인자 없이 실행하면 <code>04_path_planning/</code> 하위의
+    vehicle 시나리오(01~03·06)를 한 viewer 에 멀티 로드해 좌측 Recordings 패널에서 클릭 전환할 수 있습니다.
+  </p>
+
+  <h3>디버그 신호 — 심화 분석 (선택)</h3>
+  <p>
+    <code>record_gen.py</code> 의 <code>dbg.add(...)</code> 블록에는 <code>debug1/2/3</code> 주석
+    placeholder 가 준비돼 있습니다. 주석을 풀고 분석하고 싶은 값·식(예: 추적 오차, 내부 상태)을
+    채우면 그 신호가 record 에 함께 저장됩니다 — 신호 추가·삭제·수정은 이 <code>dbg.add()</code>
+    호출의 kwarg 한 줄로 끝납니다.
+  </p>
+  <p>
+    디버그 신호는 viewer 기본 화면에는 나타나지 않습니다 — Rerun viewer 좌측 entity 패널에서
+    <code>/debug/&lt;이름&gt;</code> 항목을 골라 TimeSeriesView 를 직접 추가하면 시계열로 볼 수 있습니다.
+    구현이 막힐 때 내부 신호를 들여다보는 디버깅 도구로 활용하세요.
+  </p>
+
+  <h2><span class="num">5</span>합격 기준 <span class="tag">pytest</span></h2>
+  <p>알고리즘 형태(정통 좌·우 평균 / 다른 결합 방식)는 자유 — 동작 명세(behavioral spec)만 검증합니다.</p>
+  <ol class="pass-list">
+    <li><b>인터페이스 sanity</b> — <code>both_lane_to_path</code> 반환 shape 이 입력과 동일한 column.</li>
+    <li><b>폐루프 추적 오차</b> — sinusoidal both-lane 도로 30초 추종, tail 평균
+      <code>|lateral err| &lt; 0.3 m</code>, peak <code>&lt; 1.0 m</code>.</li>
+  </ol>
+  <div class="note">
+    <b>주의:</b> trivial 구현(<code>coeff_path = 0</code>)은 도로 곡선을 따라가지 못해 임계값 초과로 차단됩니다.
+  </div>
+
+  <h2><span class="num">6</span>힌트</h2>
+  <ul>
+    <li>중앙선은 좌·우 차선의 <b>가운데</b> 입니다 — 같은 차수의 계수끼리 어떻게 결합하면 가운데가 될지 생각해 보세요.</li>
+    <li>다항식 계수는 column 벡터입니다. numpy 산술은 element-wise 라 차수별 계수에 한 번에 적용됩니다.</li>
+    <li>반환 shape 은 입력과 같아야 합니다 — 새 배열의 형태를 먼저 확인하세요.</li>
+  </ul>
+
+  <h2><span class="num">7</span>제약</h2>
+  <ul>
+    <li><code>lane_both.py</code>, <code>vehicle_lat_both.py</code>, <code>record_gen.py</code>, <code>test_both_lane.py</code>
+      — <b>수정 금지</b> (검증 환경).</li>
+    <li><code>both_lane_to_path()</code> 의 시그니처 변경 금지.</li>
+    <li>Chapter 3 의 <code>frame_transform</code>, <code>pure_pursuit</code> 는 <code>sys.path</code> import 만 — 수정 금지.</li>
+    <li>게인·파라미터(<code>lookahead_time</code>)는 <code>record_gen.py</code> 에서 실험 — release 기본값은 0 으로
+      초기화되어 있으니 직접 채워 응답을 확인하세요. <code>test_*.py</code> 의 값은 변경 금지.</li>
+  </ul>
+
+  <hr>
+  <p class="footer">
+    IVS — Intelligent Vehicle Systems · Chapter 4 Path Planning · 01_both_lane<br>
+    구현 파일: <code>both_lane_planner.py</code> · 검증: <code>pytest</code> · 시각화: Rerun viewer
+  </p>
+
+</body>
+
+</html>

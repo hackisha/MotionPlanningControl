@@ -8,10 +8,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from closed_loop_kf import closed_loop_step
+from debug_signals import DebugSignals
 from kalman_filter_2d import KalmanFilter2D
 from pid_controller import PIDController
 from plant_kf import Plant
@@ -42,12 +46,13 @@ def main() -> None:
     A = np.array([[1.0, dt], [0.0, 1.0 - damping * dt / m]])
     B = np.array([0.0, dt / m])
     C = np.array([1.0, 0.0])
-    Q = np.diag([1e-3, 1e-3])
-    R = noise_std ** 2
-    # [튜닝] 게인/파라미터 값을 바꿔 응답 변화 비교 — test_*.py 의 값은 변경 X (합격 기준)
+    # [튜닝] Q / R / PID 게인은 0 으로 초기화 — 학생이 직접 값을 골라 채워야 함.
+    # test_*.py 의 값은 변경 X (합격 기준).
+    Q = np.diag([0.0, 0.0])
+    R = 0.0
     kf = KalmanFilter2D(A=A, B=B, C=C, Q=Q, R=R,
                         x0=np.array([1.0, 0.0]), P0=10.0 * np.eye(2))
-    pid = PIDController(kp=2.0, kd=2.0, ki=0.5, dt=dt)
+    pid = PIDController(kp=0.0, kd=0.0, ki=0.0, dt=dt)
 
     t = np.arange(steps) * dt
     y_true = np.zeros(steps)
@@ -55,10 +60,18 @@ def main() -> None:
     y_estimate = np.zeros(steps)
     u_arr = np.zeros(steps)
     prev_u = 0.0
+    dbg = DebugSignals()  # 디버그 신호 수집기 — 신호 추가/삭제는 아래 dbg.add() 한 줄
     for i in range(steps):
         yt, ym, ye, u = closed_loop_step(plant, kf, pid, target=0.0, prev_u=prev_u)
         y_true[i], y_measure[i], y_estimate[i], u_arr[i] = yt, ym, ye, u
         prev_u = u
+        # 디버그 신호 — 주석을 풀고 원하는 값/식을 넣으세요.
+        # 추가·삭제·수정은 이 dbg.add() 의 kwarg 한 줄로 끝납니다.
+        dbg.add(
+            # debug1=<신호 값 또는 식>,
+            # debug2=<신호 값 또는 식>,
+            # debug3=<신호 값 또는 식>,
+        )
 
     x_visual = VX_VISUAL * t
     lane_x = [float(x_visual.min()) - 10.0, float(x_visual.max()) + 10.0]
@@ -89,6 +102,9 @@ def main() -> None:
             {"name": "y_estimate", "unit": "m", "t": t.tolist(), "value": y_estimate.tolist()},
             {"name": "u_cmd", "unit": "N", "t": t.tolist(), "value": u_arr.tolist()},
         ],
+        # 디버그 신호 — 기본 blueprint 미포함. viewer 의 entity 패널에서 /debug/<name>
+        # 을 골라 TimeSeriesView 를 직접 추가하면 심화 분석 가능.
+        "debug_scalars": dbg.to_debug_scalars(t),
         "dynamic_points": [
             {"name": "measurement", "color": [255, 200, 50, 200], "radius": 0.18,
              "t": t.tolist(), "points_per_t": measure_points},

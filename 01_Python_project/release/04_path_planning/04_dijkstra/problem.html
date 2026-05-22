@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>과제 — Dijkstra 최단 경로 탐색</title>
+  <style>
+    :root {
+      --ink: #1a2330;
+      --muted: #5b6675;
+      --line: #d9dee6;
+      --accent: #1f6feb;
+      --accent-soft: #e8f0fe;
+      --warn: #b3541e;
+      --warn-soft: #fdf0e6;
+      --ok: #1f7a3d;
+      --code-bg: #f4f6f9;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      line-height: 1.7;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 28px 96px;
+      background: #fff;
+    }
+
+    h1 {
+      font-size: 1.7rem;
+      margin: 0 0 4px;
+      letter-spacing: -0.01em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.98rem;
+      margin-bottom: 28px;
+    }
+
+    h2 {
+      font-size: 1.18rem;
+      margin: 38px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--line);
+    }
+
+    h2 .num {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.82rem;
+      width: 1.55em;
+      height: 1.55em;
+      line-height: 1.55em;
+      text-align: center;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: 1px;
+    }
+
+    h3 {
+      font-size: 1.02rem;
+      margin: 22px 0 6px;
+    }
+
+    p {
+      margin: 8px 0;
+    }
+
+    code {
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .scenario-card {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 1.02rem;
+    }
+
+    .formula {
+      background: #fbfcfe;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 14px 0;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.96rem;
+    }
+
+    .formula .lbl {
+      color: var(--muted);
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 0.94rem;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--code-bg);
+      font-weight: 600;
+    }
+
+    ul,
+    ol {
+      margin: 8px 0;
+      padding-left: 24px;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    .note {
+      background: var(--warn-soft);
+      border-left: 4px solid var(--warn);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 0.94rem;
+    }
+
+    .note b {
+      color: var(--warn);
+    }
+
+    .fig {
+      margin: 22px 0;
+      text-align: center;
+    }
+
+    .fig figcaption {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-top: 8px;
+    }
+
+    .pass-list li {
+      margin: 8px 0;
+    }
+
+    .pass-list b {
+      color: var(--ok);
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-left: 6px;
+      vertical-align: 2px;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 32px 0;
+    }
+
+    .footer {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Dijkstra — 8-connected 격자 최단 경로</h1>
+  <p class="subtitle">Chapter 4 · Path Planning / 04_dijkstra &nbsp;|&nbsp; graph search 의 출발점 — 비용 누적 기반 탐색</p>
+
+  <div class="scenario-card">
+    60×60 격자 미로에서 start 부터 goal 까지의 <b>8-connected 최단 경로</b>를
+    <b>Dijkstra 알고리즘</b>으로 탐색하세요. 단계별 노드 expansion 과정을 Rerun 2D viewer 로 재생합니다.
+  </div>
+
+  <div class="note">
+    <b>이 과제는 차량 제어가 없습니다.</b> 격자 탐색 알고리즘 자체에만 집중하세요 —
+    결과는 2D viewer 의 노드 expansion 과 최종 경로로만 확인합니다.
+  </div>
+
+  <h2><span class="num">1</span>문제 상황</h2>
+  <p>
+    01~03 은 path 가 <b>연속 곡선</b>(다항식)이었습니다. 이번 챕터 후반(04~07)은 <b>격자/이산 공간의
+    graph search</b> 로, path 가 <b>노드의 나열</b>입니다. Dijkstra 는 그 중 가장 기본 — 시작점부터의
+    <b>누적 비용</b>이 가장 작은 노드를 매 스텝 확장합니다.
+  </p>
+  <ul>
+    <li>start <code>(5, 5)</code>, goal <code>(55, 5)</code> — 둘 다 벽 아래쪽이라 직진 경로가 없습니다.</li>
+    <li>중앙 벽 위쪽(<code>y ≥ 51</code>)으로 우회해야 goal 에 닿습니다.</li>
+  </ul>
+
+  <div class="fig">
+    <svg viewBox="0 0 300 300" width="100%" style="max-width:340px" xmlns="http://www.w3.org/2000/svg"
+      aria-label="dijkstra grid maze">
+      <rect x="0" y="0" width="300" height="300" fill="#f4f6f9" />
+      <!-- grid lines -->
+      <g stroke="#e3e7ec" stroke-width="1">
+        <line x1="60" y1="0" x2="60" y2="300" />
+        <line x1="120" y1="0" x2="120" y2="300" />
+        <line x1="180" y1="0" x2="180" y2="300" />
+        <line x1="240" y1="0" x2="240" y2="300" />
+        <line x1="0" y1="60" x2="300" y2="60" />
+        <line x1="0" y1="120" x2="300" y2="120" />
+        <line x1="0" y1="180" x2="300" y2="180" />
+        <line x1="0" y1="240" x2="300" y2="240" />
+      </g>
+      <!-- border -->
+      <rect x="0" y="0" width="300" height="300" fill="none" stroke="#2a2f3a" stroke-width="6" />
+      <!-- central vertical wall x=30, y=0..50 (svg x=150, y 50..300) -->
+      <line x1="150" y1="50" x2="150" y2="300" stroke="#2a2f3a" stroke-width="6" />
+      <!-- y=20 horizontal wall: x 0..20, 40..60 (svg y=200) -->
+      <line x1="0" y1="200" x2="100" y2="200" stroke="#2a2f3a" stroke-width="6" />
+      <line x1="200" y1="200" x2="300" y2="200" stroke="#2a2f3a" stroke-width="6" />
+      <!-- y=35 horizontal wall: x 10..50 (svg y=125) -->
+      <line x1="50" y1="125" x2="250" y2="125" stroke="#2a2f3a" stroke-width="6" />
+      <!-- start (5,5) svg (25,275) -->
+      <circle cx="25" cy="275" r="9" fill="#1f6feb" />
+      <text x="25" y="263" text-anchor="middle" fill="#1f6feb" font-size="11" font-weight="700">S</text>
+      <!-- goal (55,5) svg (275,275) -->
+      <circle cx="275" cy="275" r="9" fill="#d6453d" />
+      <text x="275" y="263" text-anchor="middle" fill="#d6453d" font-size="11" font-weight="700">G</text>
+    </svg>
+    <figcaption>그림 1. 60×60 격자 미로 — 검은 선이 벽. start(S)·goal(G) 모두 벽 아래, 중앙 벽 위로 우회 필요.</figcaption>
+  </div>
+
+  <h2><span class="num">2</span>Map 구조</h2>
+  <ul>
+    <li>외곽 border(<code>x=0,60 / y=0,60</code>) — 완전 폐쇄.</li>
+    <li>중앙 vertical wall(<code>x=30, y=0..50</code>) — 좌·우 분리. <code>y=51..59</code> 만 개방.</li>
+    <li><code>y=20</code> horizontal wall — <code>x=0..20 ∪ x=40..60</code> 폐쇄(<code>x=21..39</code> 개방).</li>
+    <li><code>y=35</code> horizontal wall — <code>x=10..50</code> 폐쇄(<code>x=0..9 ∪ x=51..59</code> 개방).</li>
+  </ul>
+
+  <h3>8-connected 이동</h3>
+  <p>직진 이동 비용 1, 대각선 이동 비용 √2. 8방향 이동은 <code>dijkstra.py</code> 의 <code>_ACTIONS</code> 상수에 이미 정의돼 있습니다.</p>
+
+  <h2><span class="num">3</span>구현 과제</h2>
+  <p>
+    <code>dijkstra.py</code> 의 <code>dijkstra()</code> 함수 본문(<code># TODO</code>)을 구현하세요. 시그니처는 이미 주어져 있습니다.
+  </p>
+  <pre>def dijkstra(
+    start: tuple[int, int],
+    goal: tuple[int, int],
+    obstacles: set[tuple[int, int]],
+    on_step: Callable[[tuple[int, int], set[tuple[int, int]], float, float], None] | None = None,
+) -> list[tuple[int, int]]</pre>
+  <table>
+    <tr>
+      <th>인자</th>
+      <th>의미</th>
+    </tr>
+    <tr>
+      <td><code>obstacles</code></td>
+      <td>벽 셀의 집합 — <code>set</code> 이라 포함 검사가 O(1).</td>
+    </tr>
+    <tr>
+      <td><code>on_step</code></td>
+      <td>매 노드 expand 직후 호출되는 시각화 콜백 — <code>(current_node, open_set, g_cost, f_cost)</code>. <code>open_set</code> 은 그 시점의 open list, <code>g_cost</code> 는 current 의 누적 비용, Dijkstra 는 heuristic 이 없어 <code>f_cost = g_cost</code>. <code>None</code> 이면 호출 안 함.</td>
+    </tr>
+    <tr>
+      <td><b>반환</b></td>
+      <td>경로 list(start → goal 순서). 경로 미발견 시 <code>[]</code>.</td>
+    </tr>
+  </table>
+
+  <h3>게인·파라미터 튜닝</h3>
+  <p>
+    이 과제는 <b>알고리즘 로직</b>만 구현합니다 — 튜닝할 게인·파라미터가 없습니다.
+    <code>record_gen.py</code> 는 시각화 viewer 를 띄우는 역할만 하며(<code>--skip</code> 등 viz 옵션만 존재),
+    탐색 동작에 영향을 주는 값은 없습니다. 합격 기준 값은 <code>test_*.py</code> 에 있으며 <b>변경 금지</b> 입니다.
+  </p>
+
+  <h2><span class="num">4</span>실행 방법</h2>
+  <p>모든 명령은 git 저장소 루트에서 실행합니다.</p>
+
+  <h3>구현 파일</h3>
+  <pre>01_Python_project/release/04_path_planning/04_dijkstra/dijkstra.py</pre>
+
+  <h3>테스트 — 합격 기준 검증</h3>
+  <pre>uv run pytest 01_Python_project/release/04_path_planning/04_dijkstra/ -v</pre>
+
+  <h3>시나리오 실행 → record JSON 생성 + Rerun viewer 자동 실행</h3>
+  <pre>uv run python 01_Python_project/release/04_path_planning/04_dijkstra/record_gen.py</pre>
+  <p>
+    2D viewer 에 격자 + 장애물(검정) + start(파랑) + goal(빨강)이 표시됩니다. 좌측 timeline scrubber
+    <code>step</code> 을 움직이면 매 step 의 current(주황), 누적 closed list(옅은 노랑), 현재 open list(초록)가
+    갱신되고, 마지막 step 뒤 최종 path(마젠타)가 그려집니다.
+  </p>
+  <ul>
+    <li>JSON 만 만들고 viewer 를 띄우지 않으려면 <code>--no-viewer</code>.</li>
+    <li>frame 이 너무 많아 scrubber 가 답답하면 <code>--skip N</code> 으로 N step 마다 frame 1개로 묶습니다
+      (기본 10, <code>--skip 1</code> = subsample 없음).</li>
+  </ul>
+
+  <h3>Rerun viewer 재생 (search 전용 simulator)</h3>
+  <pre>uv run python 01_Python_project/release/04_path_planning/simulator_search.py 01_Python_project/release/04_path_planning/04_dijkstra/</pre>
+  <p>
+    <code>simulator_search.py</code> 는 search 알고리즘 전용입니다 — 인자 없이 실행하면 <code>04_path_planning/</code>
+    하위의 모든 search record 를 한 viewer 에 멀티 로드합니다. (01~03 은 vehicle 시뮬레이션이라
+    <code>simulator_path_planning.py</code> 를 씁니다.)
+  </p>
+
+  <h3>디버그 신호 — expansion 별 분석 (선택)</h3>
+  <p>
+    <code>record_gen.py</code> 의 <code>on_step</code> 콜백은 <b>매 노드 확장(expansion)</b>마다
+    호출됩니다 — 거기서 <code>goal_dist</code>(현재 노드→goal 거리)·<code>open_size</code>
+    (open list 크기)·<code>g_cost</code>(시작→current 누적 비용)·<code>h_cost</code>(heuristic
+    항 — Dijkstra 는 항상 0)·<code>f_cost</code>(총 비용 <code>g + h</code>)를 record 의
+    <code>debug_scalars</code> 로 저장합니다. 더 분석할 값은 <code>dbg.add(...)</code> 의
+    kwarg 한 줄로 추가할 수 있습니다.
+  </p>
+  <p>
+    디버그 신호는 viewer 기본 화면에는 없습니다 — 좌측 entity 패널에서 <code>/debug/&lt;이름&gt;</code> 을
+    골라 TimeSeriesView 를 추가하세요. 하단 타임라인은 <b>기본이 <code>iteration</code></b>
+    (expansion 단위)이라 디버그 곡선이 expansion 축으로 곧바로 보입니다. frame 단위
+    (<code>--skip</code> 묶음)로 재생하려면 타임라인 드롭다운에서 <code>step</code> 을 고르세요.
+  </p>
+
+  <h2><span class="num">5</span>합격 기준 <span class="tag">pytest</span></h2>
+  <p>알고리즘 형태(정통 Dijkstra / heapq priority queue / 다른 변종)는 자유 — 동작 명세(behavioral spec)만 검증합니다.</p>
+  <ol class="pass-list">
+    <li><b>시작·끝 일치</b> — <code>path[0] == start</code>, <code>path[-1] == goal</code>.</li>
+    <li><b>장애물 회피</b> — 모든 path 노드가 <code>obstacles</code> 밖.</li>
+    <li><b>8-connectivity</b> — 연속 노드 간 Δx, Δy ∈ {−1, 0, 1}(이동량 0 아님).</li>
+    <li><b>최단 cost</b> — path 총 cost(<code>Σ √(Δx² + Δy²)</code>)가 reference 의 1.05배 이내.</li>
+    <li><b>on_step 콜백 호출</b> — 콜백 전달 시 첫 호출의 current 가 start, 호출 횟수 ≥ path 길이.</li>
+  </ol>
+  <div class="note">
+    <b>주의:</b> trivial 구현(BFS 로 step 수만 최소화)은 8-connected 의 대각 비용이 √2 라서 4번 최단 cost 에서 차단될 수 있습니다.
+  </div>
+
+  <h2><span class="num">6</span>힌트</h2>
+  <ul>
+    <li><b>자료 구조</b> — 후보 노드(open)와 이미 확장한 노드(closed)를 따로 둡니다. 각 노드에 대해
+      <b>시작점부터의 누적 cost</b> 와 <b>부모 노드</b>를 함께 기억하면, goal 도달 후 부모를 거꾸로 따라가며
+      경로를 복원할 수 있습니다.</li>
+    <li><b>매 스텝</b> — open 중 누적 cost 가 가장 작은 노드를 골라 closed 로 옮기고, 그 직후
+      <code>on_step(current, open_set, g_cost, f_cost)</code> 를 호출합니다(콜백이 있을 때 — Dijkstra 는 <code>f = g</code>).</li>
+    <li><b>이웃 확장</b> — <code>_ACTIONS</code> 8방향에 대해 자식 후보를 만들고 obstacles·closed 를 검사합니다.
+      이미 더 작은 cost 로 도달한 노드는 갱신하지 않습니다.</li>
+    <li>open 이 비었는데 goal 에 닿지 못했다면 경로가 없는 것 — 빈 list 를 반환합니다.</li>
+    <li>경로 복원 후에는 start → goal 순서가 되도록 뒤집어 반환하세요.</li>
+  </ul>
+
+  <h2><span class="num">7</span>제약</h2>
+  <ul>
+    <li><code>map_dijkstra.py</code>, <code>record_gen.py</code>, <code>test_dijkstra.py</code> — <b>수정 금지</b> (검증 환경).</li>
+    <li><code>simulator_search.py</code>(Chapter 4 공용) — 수정 금지.</li>
+    <li><code>dijkstra()</code> 의 시그니처 변경 금지.</li>
+    <li>알고리즘은 <b>순수 Python</b> 으로 구현 — numpy/scipy 의 path-finder 라이브러리 사용 금지(학습 목적 위반).</li>
+  </ul>
+
+  <hr>
+  <p class="footer">
+    IVS — Intelligent Vehicle Systems · Chapter 4 Path Planning · 04_dijkstra<br>
+    구현 파일: <code>dijkstra.py</code> · 검증: <code>pytest</code> · 시각화: Rerun 2D viewer
+  </p>
+
+</body>
+
+</html>

@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>과제 — Informed RRT* 타원 informed 경로 탐색</title>
+  <style>
+    :root {
+      --ink: #1a2330;
+      --muted: #5b6675;
+      --line: #d9dee6;
+      --accent: #1f6feb;
+      --accent-soft: #e8f0fe;
+      --warn: #b3541e;
+      --warn-soft: #fdf0e6;
+      --ok: #1f7a3d;
+      --code-bg: #f4f6f9;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      line-height: 1.7;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 28px 96px;
+      background: #fff;
+    }
+
+    h1 {
+      font-size: 1.7rem;
+      margin: 0 0 4px;
+      letter-spacing: -0.01em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.98rem;
+      margin-bottom: 28px;
+    }
+
+    h2 {
+      font-size: 1.18rem;
+      margin: 38px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--line);
+    }
+
+    h2 .num {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.82rem;
+      width: 1.55em;
+      height: 1.55em;
+      line-height: 1.55em;
+      text-align: center;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: 1px;
+    }
+
+    h3 {
+      font-size: 1.02rem;
+      margin: 22px 0 6px;
+    }
+
+    p {
+      margin: 8px 0;
+    }
+
+    code {
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .scenario-card {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 1.02rem;
+    }
+
+    .formula {
+      background: #fbfcfe;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 14px 0;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.96rem;
+    }
+
+    .formula .lbl {
+      color: var(--muted);
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 0.94rem;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--code-bg);
+      font-weight: 600;
+    }
+
+    ul,
+    ol {
+      margin: 8px 0;
+      padding-left: 24px;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    .note {
+      background: var(--warn-soft);
+      border-left: 4px solid var(--warn);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 0.94rem;
+    }
+
+    .note b {
+      color: var(--warn);
+    }
+
+    .fig {
+      margin: 22px 0;
+      text-align: center;
+    }
+
+    .fig figcaption {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-top: 8px;
+    }
+
+    .pass-list li {
+      margin: 8px 0;
+    }
+
+    .pass-list b {
+      color: var(--ok);
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-left: 6px;
+      vertical-align: 2px;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 32px 0;
+    }
+
+    .footer {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Informed RRT* — 타원 informed 경로 탐색</h1>
+  <p class="subtitle">Chapter 4 · Path Planning / 09_informed_rrt_star &nbsp;|&nbsp; 찾은 경로로 탐색 공간을 좁혀 정밀하게 수렴</p>
+
+  <div class="scenario-card">
+    <b>Informed RRT*</b> 로 격자 미로의 경로를 단계적으로 줄이세요. 한 번 경로를 찾으면, 그보다 짧은
+    경로가 있을 수 있는 영역은 <b>start·goal 을 초점으로 하는 타원</b> 안뿐입니다 — 그 타원 안에서만
+    다시 탐색하며, <b>더 짧은 경로를 찾을 때마다</b> 타원이 좁아져 탐색이 점점 정밀해집니다.
+  </div>
+
+  <div class="note">
+    <b>이 과제는 차량 제어가 없습니다.</b> 결과는 Rerun 2D viewer 의 tree 성장·수렴과 최종 경로로만 확인합니다.
+  </div>
+
+  <h2><span class="num">1</span>문제 상황</h2>
+  <p>
+    RRT*(08)는 tree 를 한 번 키워 경로를 냅니다 — 전체 공간을 고르게 sampling 하므로, 답이 절대
+    지날 리 없는 먼 구석까지 점을 뿌립니다. Informed RRT* 는 <b>한 번 경로를 찾은 뒤</b> 낭비를
+    없앱니다: 비용 <code>c</code> 이하의 경로는 반드시 <b>start·goal 을 초점, <code>c</code> 를 장축</b>
+    으로 하는 타원 안을 지납니다. 그러니 그 타원만 다시 sampling 하면 됩니다. 경로가 짧아질수록
+    타원이 작아지고, 탐색이 점점 정밀해집니다.
+  </p>
+  <table>
+    <tr><th></th><th>RRT (07)</th><th>RRT* (08)</th><th>Informed RRT* (09)</th></tr>
+    <tr><td>연결 방식</td><td>nearest 에 연결</td><td>choose-parent + rewire</td><td>choose-parent + rewire</td></tr>
+    <tr><td>샘플링 공간</td><td>전체</td><td>전체</td><td>첫 경로 전 전체 → 이후 타원</td></tr>
+    <tr><td>탐색 구조</td><td>단일 loop</td><td>단일 loop</td><td>단일 loop — 개선마다 타원 축소</td></tr>
+    <tr><td>최적성</td><td>보장 X</td><td>점근적 최적</td><td>점근적 최적 + 빠른 수렴</td></tr>
+  </table>
+
+  <div class="fig">
+    <svg viewBox="0 0 300 300" width="100%" style="max-width:340px" xmlns="http://www.w3.org/2000/svg"
+      aria-label="informed rrt-star ellipse">
+      <rect x="0" y="0" width="300" height="300" fill="#f4f6f9" />
+      <g stroke="#e3e7ec" stroke-width="1">
+        <line x1="60" y1="0" x2="60" y2="300" />
+        <line x1="120" y1="0" x2="120" y2="300" />
+        <line x1="180" y1="0" x2="180" y2="300" />
+        <line x1="240" y1="0" x2="240" y2="300" />
+        <line x1="0" y1="60" x2="300" y2="60" />
+        <line x1="0" y1="120" x2="300" y2="120" />
+        <line x1="0" y1="180" x2="300" y2="180" />
+        <line x1="0" y1="240" x2="300" y2="240" />
+      </g>
+      <rect x="0" y="0" width="300" height="300" fill="none" stroke="#2a2f3a" stroke-width="6" />
+      <!-- slalom walls (gap up / gap down) + corner decoys -->
+      <g fill="#9aa3af" opacity="0.6">
+        <rect x="110" y="135" width="20" height="160" />
+        <rect x="110" y="5" width="20" height="20" />
+        <rect x="185" y="5" width="20" height="170" />
+        <rect x="185" y="275" width="20" height="20" />
+        <rect x="40" y="240" width="25" height="25" />
+        <rect x="40" y="45" width="25" height="25" />
+        <rect x="240" y="235" width="25" height="25" />
+        <rect x="240" y="50" width="25" height="25" />
+      </g>
+      <!-- informed ellipse (foci = S, G) -->
+      <ellipse cx="150" cy="150" rx="135" ry="92" fill="none" stroke="#d6539e"
+        stroke-width="2" stroke-dasharray="6 5" />
+      <!-- shorter ellipse (later round) -->
+      <ellipse cx="150" cy="150" rx="118" ry="62" fill="none" stroke="#d6539e"
+        stroke-width="2" stroke-dasharray="3 4" opacity="0.6" />
+      <!-- path -->
+      <path d="M50,150 L115,100 L190,210 L250,150" fill="none"
+        stroke="#7fa8e0" stroke-width="3" />
+      <circle cx="50" cy="150" r="9" fill="#1f6feb" />
+      <text x="50" y="138" text-anchor="middle" fill="#1f6feb" font-size="11" font-weight="700">S</text>
+      <circle cx="250" cy="150" r="9" fill="#d6453d" />
+      <text x="250" y="138" text-anchor="middle" fill="#d6453d" font-size="11" font-weight="700">G</text>
+    </svg>
+    <figcaption>그림 1. 찾은 경로 길이를 장축으로 하는 타원(분홍 점선)이 새 탐색 공간 —
+      경로가 짧아질수록 타원이 작아진다.</figcaption>
+  </div>
+
+  <h2><span class="num">2</span>Map 구조 <span class="tag">S-커브 슬라럼</span></h2>
+  <ul>
+    <li>60×60 격자, 외곽 border.</li>
+    <li>start→goal 일직선을 막는 세로 벽 2개 + 모서리 장식 사각형 4개 — 손으로 배치한
+      고정 맵이라 항상 같습니다.</li>
+    <li>두 벽의 통과 구멍(gap)이 위·아래로 엇갈려 있어, 경로는 1번 벽을 위로 2번 벽을
+      아래로 감아 도는 완만한 S-커브가 됩니다.</li>
+    <li>start <code>(10, 30)</code>, goal <code>(50, 30)</code> — 같은 높이지만 직선 경로는
+      슬라럼 벽이 차단합니다.</li>
+  </ul>
+
+  <h2><span class="num">3</span>구현 도구 — <code>informed_rrt_star.py</code> 안의 helper</h2>
+  <p>
+    <code>informed_rrt_star()</code> 함수와 <b>같은 파일</b> 안에 helper 5개가 미리 정의돼 있습니다.
+    import 없이 본문에서 바로 호출하세요 — 직접 다시 구현하지 마세요.
+  </p>
+  <table>
+    <tr><th>함수</th><th>역할</th></tr>
+    <tr><td><code>_euclid(a, b)</code></td><td>2D Euclidean 거리</td></tr>
+    <tr><td><code>_steer(node_from, node_to, eta)</code></td><td><code>node_from</code> 에서 <code>node_to</code> 방향으로 <code>eta</code> 까지 전진한 새 점</td></tr>
+    <tr><td><code>_is_collision_free(a, b, obstacles)</code></td><td>선분을 fine-sample 해 어느 cell 도 obstacle 가 아니면 True</td></tr>
+    <tr><td><code>_path_length(path)</code></td><td>경로의 연속 segment 길이 합 — 타원 장축 계산용</td></tr>
+    <tr><td><code>_sample_in_ellipse(rng, x_start, x_goal, c_best)</code></td><td>start·goal 초점, <code>c_best</code> 장축인 타원 안의 uniform random 점</td></tr>
+  </table>
+  <div class="note">
+    <b>주의:</b> helper 들은 검증 환경 — 시그니처·본문 수정 금지. <code>informed_rrt_star()</code>
+    함수 본문만 채우면 됩니다. 타원 informed sampling 의 수식은 <code>_sample_in_ellipse</code> 에
+    들어 있으니, 여러분은 <b>언제 그것을 호출할지</b>(round 구조)에 집중하세요.
+  </div>
+
+  <h2><span class="num">4</span>구현 과제</h2>
+  <p>
+    <code>informed_rrt_star.py</code> 의 <code>informed_rrt_star()</code> 함수 본문(<code># TODO</code>)을
+    구현하세요. 시그니처는 이미 주어져 있습니다.
+  </p>
+  <pre>def informed_rrt_star(
+    start: tuple[float, float],
+    goal: tuple[float, float],
+    obstacles: set[tuple[int, int]],
+    grid_size: int,
+    max_iter: int = 900,
+    eta: float = 6.0, goal_range: float = 8.0, goal_range_min: float = 1.5,
+    eta_decay: float = 0.72, eta_min: float = 2.0, goal_decay: float = 1.0,
+    improve_eps: float = 0.3,
+    search_radius: float = 8.0, goal_sample_rate: float = 0.05,
+    seed: int | None = 0,
+    on_step: Callable[[(x, y), (px, py), int], None] | None = None,
+) -> list[tuple[float, float]]</pre>
+  <table>
+    <tr><th>인자</th><th>의미</th></tr>
+    <tr><td><code>max_iter</code></td><td>전체 sampling 반복 수 (anytime budget) — 유일한 종료 조건.</td></tr>
+    <tr><td><code>eta</code></td><td><b>첫 경로 전</b>(<code>inform_round 0</code>)의 steer 한 스텝 거리. round <code>r</code> 은 <code>eta · eta_decay^r</code> (<code>eta_min</code> 하한 clip).</td></tr>
+    <tr><td><code>goal_range</code></td><td>goal 도달 판정 거리. 기본 <code>goal_decay=1.0</code> 이라 모든 round 에서 동일.</td></tr>
+    <tr><td><code>goal_range_min</code></td><td><code>goal_range</code> 의 하한 — <code>goal_decay&lt;1</code> 로 줄일 때 너무 작아지지 않게 clip.</td></tr>
+    <tr><td><code>eta_decay</code> / <code>goal_decay</code></td><td>개선(round)마다 <code>eta</code> / <code>goal_range</code> 에 곱하는 비율. <code>eta_decay</code>&lt;1 (축소), <code>goal_decay</code> 기본 1.0 (고정).</td></tr>
+    <tr><td><code>eta_min</code></td><td>round 별 <code>eta</code> 의 하한 — round 가 늘어도 0 으로 수렴하지 않게 clip.</td></tr>
+    <tr><td><code>improve_eps</code></td><td>round 진행으로 인정하는 최소 개선 폭 — 새 경로가 이만큼은 짧아야 <code>c_best</code>·타원·round 갱신 (미세 개선 폭증 방지).</td></tr>
+    <tr><td><code>search_radius</code></td><td>choose-parent·rewire 가 후보를 찾는 반경.</td></tr>
+    <tr><td><code>on_step</code></td><td>node 추가·rewire 직후 호출 — <code>(child, parent, iteration)</code>. <code>iteration</code> 은 단일 loop 의 연속 카운터.</td></tr>
+    <tr><td><b>반환</b></td><td><code>max_iter</code> 까지의 최단 경로. 미발견 시 <code>[]</code>.</td></tr>
+  </table>
+
+  <h3>게인·파라미터 튜닝</h3>
+  <p>
+    이 과제에서 구현하는 것은 <b>알고리즘 로직</b> 입니다. 탐색 동작을 좌우하는 값(<code>max_iter</code>,
+    <code>seed</code>, <code>eta</code>)은 <code>record_gen.py</code> 의
+    <code>--max-iter</code> / <code>--seed</code> / <code>--eta</code> 옵션으로
+    viewer 에서 자유롭게 실험할 수 있습니다 — <code>--max-iter</code> 를 키우면 타원이 더 오래
+    다듬어집니다. <b>합격 기준 검증용 값은 <code>test_*.py</code> 에 있으며 변경 금지</b> 입니다.
+  </p>
+
+  <h2><span class="num">5</span>실행 방법</h2>
+  <p>모든 명령은 git 저장소 루트에서 실행합니다.</p>
+
+  <h3>구현 파일</h3>
+  <pre>01_Python_project/release/04_path_planning/09_informed_rrt_star/informed_rrt_star.py</pre>
+
+  <h3>테스트 — 합격 기준 검증</h3>
+  <pre>uv run pytest 01_Python_project/release/04_path_planning/09_informed_rrt_star/ -v</pre>
+
+  <h3>시나리오 실행 → record JSON 생성 + Rerun viewer 자동 실행</h3>
+  <pre>uv run python 01_Python_project/release/04_path_planning/09_informed_rrt_star/record_gen.py</pre>
+  <p>
+    2D viewer 에 격자 + 사각형 장애물 + start + goal 이 표시되고, timeline scrubber 로 탐색 진행을
+    재생합니다 — 하나의 tree 가 계속 이어 자라며, 개선이 일어날수록 새 node 가 더 좁은 타원 안으로
+    모이는 게 보입니다. <b>반투명 보라색 타원</b>이 현재 informed round 의 탐색 영역으로, 다음
+    개선까지 계속 표시됩니다. <b>밝은 청록 곡선</b>이 그 round 에 채택된 경로(하이라이트)로,
+    round 가 바뀌면 더 짧은 경로로 갱신되며 타원과 함께 좁아집니다. 우측 status 패널에 현재
+    informed round·tree 크기 등이 나옵니다. 옅은 노랑 점이 누적 tree node, 마젠타 곡선이 최종
+    경로입니다.
+  </p>
+  <ul>
+    <li>JSON 만 만들려면 <code>--no-viewer</code>.</li>
+    <li><code>--max-iter N</code> 으로 전체 sampling 반복 수(기본 900).</li>
+    <li><code>--seed N</code> 으로 random seed 변경(기본 0, 재현성).</li>
+    <li><code>--eta E</code> 로 첫 경로 전 steer 거리(기본 6.0).</li>
+    <li><code>--skip N</code> 으로 frame subsample(기본 10).</li>
+  </ul>
+
+  <h3>Rerun viewer 재생 (search 전용 simulator)</h3>
+  <pre>uv run python 01_Python_project/release/04_path_planning/simulator_search.py</pre>
+  <p>인자 없이 실행하면 <code>04_path_planning/</code> 하위의 모든 search record 를 한 viewer 에 멀티 로드 —
+    A* / RRT / RRT* / Informed RRT* 를 한 화면에서 비교할 수 있습니다.</p>
+
+  <h3>디버그 신호 — iteration 별 분석 (선택)</h3>
+  <p>
+    <code>informed_rrt_star()</code> 는 optional 인자 <code>dbg</code> 를 받습니다. 탐색 루프 안에서
+    <code>dbg</code> 가 주어졌을 때 <code>dbg.add(...)</code> 를 호출하면, 매 iteration 의 내부 값이
+    record 의 <code>debug_scalars</code> 로 저장됩니다 — goal 거리·reject·tree 크기·재배선 수·
+    현재 round·현재 최단 비용(<code>best_cost</code>) 같은 값을 남깁니다.
+  </p>
+  <pre>for it in range(max_iter):
+    ...
+    if dbg is not None:
+        dbg.add(goal_dist=..., rejected=..., tree_size=...,
+                rewire_count=..., inform_round=..., best_cost=...)   # 매 iteration 한 줄</pre>
+  <p>
+    <code>iteration</code> 은 round 가 바뀌어도 이어지는 전역 카운터이므로, 디버그 신호도 모든
+    round 가 하나의 연속 타임라인으로 보입니다 — <code>best_cost</code> 가 round 마다 계단식으로
+    내려가는 것이 informed 수렴입니다. 좌측 entity 패널에서 <code>/debug/&lt;이름&gt;</code> 을 골라
+    TimeSeriesView 를 추가하세요.
+  </p>
+
+  <h2><span class="num">6</span>합격 기준 <span class="tag">pytest</span></h2>
+  <p>알고리즘 형태(자료 구조·RNG 구현)는 자유 — 동작 명세(behavioral spec)만 검증합니다.</p>
+  <ol class="pass-list">
+    <li><b>start 일치</b> — <code>path[0] == start</code>.</li>
+    <li><b>goal 근접</b> — <code>‖path[-1] − goal‖ &lt; goal_range</code>(기본 8.0).</li>
+    <li><b>segment 충돌 없음</b> — 연속 두 점을 잇는 선분의 fine-sample 어느 cell 도 obstacle 가 아님.</li>
+    <li><b>segment 제약</b> — 연속 segment 길이 ≤ <code>search_radius</code> (choose-parent·rewire 연결 반경).</li>
+    <li><b>on_step 콜백 호출</b> — 호출 수 ≥ path edge 수, 첫 호출 parent == start, iteration 단조 증가.</li>
+    <li><b>재현성</b> — 같은 seed 면 같은 path.</li>
+    <li><b>budget 단조성</b> — <code>max_iter</code> 가 클수록 goal 도달 추정비용(경로 길이 + 마지막 node→goal 거리)이 작거나 같음 — 더 많은 iteration 이 경로를 악화시키지 않음.</li>
+  </ol>
+
+  <h2><span class="num">7</span>힌트</h2>
+  <ul>
+    <li><b>단일 tree·단일 loop</b> — tree 자료구조(nodes·parents·children·cost)는 loop
+      <b>밖에서 한 번만</b> 만듭니다. <code>for it in range(max_iter)</code> 안에서 08 RRT* 의
+      inner loop(sample / nearest / steer / collision-free / near / choose-parent / rewire)를
+      그대로 수행하며 <b>같은 tree 를 계속</b> 키웁니다. <code>inform_round</code> 는 별도 loop 가
+      아니라 "몇 번째 개선인가"를 세는 카운터입니다.</li>
+    <li><b>샘플링 공간</b> — 첫 경로를 찾기 전(<code>c_best</code> 가 아직 무한)은 전체
+      <code>[0, grid_size]²</code> uniform. 첫 경로 후에는 현재 최단 경로 길이 <code>c_best</code> 로
+      <code>_sample_in_ellipse(rng, start, goal, c_best)</code> 를 호출해 타원 안에서만 샘플합니다.
+      (goal bias 는 공통.)</li>
+    <li><b>개선 검사 → round 진행</b> — 매 iteration <code>goal_range</code> 안 node 중
+      <code>cost + goal 까지 직선거리</code> 가 최소인 경로를 복원하고, 그 goal 도달 추정비용
+      <code>eff</code> 가 <code>c_best − improve_eps</code> 보다 작으면 — <b>의미 있게 더 짧으면</b> —
+      <code>c_best</code>·최단 경로를 갱신하고 <code>inform_round</code> 를 1 올립니다. 그 순간
+      타원이 좁아집니다.</li>
+    <li><b>round schedule</b> — <code>eta</code> 는 <code>eta · eta_decay^inform_round</code>,
+      <code>goal_range</code> 는 <code>goal_range · goal_decay^inform_round</code> 로 작아집니다
+      (각각 <code>eta_min</code> / <code>goal_range_min</code> 으로 하한 clip). 첫 경로 전
+      <code>inform_round=0</code> 은 원래 값입니다.</li>
+    <li><b>iteration 은 단일 loop 카운터</b> — <code>it</code> 를 그대로 <code>on_step</code> 에
+      넘기면 <code>on_step</code>·디버그 타임라인이 자연히 이어집니다.</li>
+    <li>반환은 <code>max_iter</code> 까지의 최단 경로. 끝내 경로를 못 찾으면 빈 list 를 반환합니다.</li>
+  </ul>
+
+  <h2><span class="num">8</span>제약</h2>
+  <ul>
+    <li><code>map_informed.py</code>, <code>record_gen.py</code>, <code>test_informed_rrt_star.py</code> — <b>수정 금지</b> (검증 환경).</li>
+    <li><code>informed_rrt_star.py</code> 안의 helper(<code>_euclid</code>, <code>_steer</code>, <code>_is_collision_free</code>, <code>_path_length</code>, <code>_sample_in_ellipse</code>) — 수정 금지.</li>
+    <li><code>simulator_search.py</code>(Chapter 4 공용) — 수정 금지. <code>informed_rrt_star()</code> 의 시그니처 변경 금지.</li>
+    <li>RNG 는 <code>random</code> 모듈만 사용 — <code>numpy.random</code> / scipy 등 다른 RNG 라이브러리 금지.</li>
+  </ul>
+
+  <hr>
+  <p class="footer">
+    IVS — Intelligent Vehicle Systems · Chapter 4 Path Planning · 09_informed_rrt_star<br>
+    구현 파일: <code>informed_rrt_star.py</code> · 검증: <code>pytest</code> · 시각화: Rerun 2D viewer
+  </p>
+
+</body>
+
+</html>

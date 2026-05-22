@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>과제 — 좌표 변환 + 다항식 피팅 (Frame Transform)</title>
+  <style>
+    :root {
+      --ink: #1a2330;
+      --muted: #5b6675;
+      --line: #d9dee6;
+      --accent: #1f6feb;
+      --accent-soft: #e8f0fe;
+      --warn: #b3541e;
+      --warn-soft: #fdf0e6;
+      --ok: #1f7a3d;
+      --code-bg: #f4f6f9;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      line-height: 1.7;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 28px 96px;
+      background: #fff;
+    }
+
+    h1 { font-size: 1.7rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+    .subtitle { color: var(--muted); font-size: 0.98rem; margin-bottom: 28px; }
+
+    h2 {
+      font-size: 1.18rem;
+      margin: 38px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--line);
+    }
+
+    h2 .num {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.82rem;
+      width: 1.55em; height: 1.55em; line-height: 1.55em;
+      text-align: center;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: 1px;
+    }
+
+    h3 { font-size: 1.02rem; margin: 22px 0 6px; }
+    p { margin: 8px 0; }
+
+    code {
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .scenario-card {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 1.02rem;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 0.94rem;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: var(--code-bg); font-weight: 600; }
+
+    ul, ol { margin: 8px 0; padding-left: 24px; }
+    li { margin: 4px 0; }
+
+    .note {
+      background: var(--warn-soft);
+      border-left: 4px solid var(--warn);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 0.94rem;
+    }
+
+    .note b { color: var(--warn); }
+
+    .fig { margin: 22px 0; text-align: center; }
+    .fig figcaption { color: var(--muted); font-size: 0.88rem; margin-top: 8px; }
+
+    .pass-list li { margin: 8px 0; }
+    .pass-list b { color: var(--ok); }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-left: 6px;
+      vertical-align: 2px;
+    }
+
+    hr { border: none; border-top: 1px solid var(--line); margin: 32px 0; }
+    .footer { color: var(--muted); font-size: 0.84rem; margin-top: 40px; }
+  </style>
+</head>
+
+<body>
+
+  <h1>좌표 변환 + 다항식 피팅 — Frame Transform</h1>
+  <p class="subtitle">Chapter 3 · Vehicle Control / 05_frame_transform &nbsp;|&nbsp; 곡선 경로 제어(06/07/08/09)의 핵심 수학 유틸리티</p>
+
+  <div class="scenario-card">
+    글로벌 좌표계의 경로 점들을 ego 의 <b>로컬 좌표계</b>로 변환하고, 그 점들에 <b>다항식을 피팅</b>한 뒤,
+    원하는 x 위치의 y 값을 평가하는 세 가지 유틸리티 클래스를 구현해 보세요.
+    이 모듈은 06/07/08/09 에서 공통으로 사용됩니다.
+  </div>
+
+  <h2><span class="num">1</span>문제 상황</h2>
+  <p>
+    곡선 경로를 따라가는 제어기는 "내 앞에 경로가 어떻게 생겼는가?"를 알아야 합니다.
+    글로벌 좌표의 경로 점들을 ego 기준 로컬 프레임으로 바꾸고, 이를 다항식으로 근사하면
+    어느 제어기든 통일된 형식으로 경로 정보를 사용할 수 있습니다.
+  </p>
+  <ul>
+    <li><b>Global → Local 변환</b>: 회전 + 평행이동으로 ego 좌표계 기준 점 좌표를 계산.</li>
+    <li><b>다항식 피팅</b>: 변환된 점들에 최소제곱(LSQ) 으로 degree-3 다항식 계수를 추정.</li>
+    <li><b>다항식 평가</b>: 주어진 x 배열에서 다항식 y 값을 계산 (lookahead, viz 용).</li>
+  </ul>
+
+  <div class="fig">
+    <svg viewBox="0 0 820 230" width="100%" style="max-width:780px" xmlns="http://www.w3.org/2000/svg"
+      aria-label="frame transform diagram">
+      <!-- Global frame (left) -->
+      <text x="30" y="25" fill="#5b6675" font-size="13" font-weight="600">Global Frame</text>
+      <!-- global path curve -->
+      <path d="M 40 180 Q 160 60 280 120" stroke="#e08a2e" stroke-width="2" fill="none" />
+      <!-- path points -->
+      <circle cx="70" cy="162" r="5" fill="#e08a2e" />
+      <circle cx="110" cy="120" r="5" fill="#e08a2e" />
+      <circle cx="160" cy="90" r="5" fill="#e08a2e" />
+      <circle cx="210" cy="96" r="5" fill="#e08a2e" />
+      <circle cx="260" cy="114" r="5" fill="#e08a2e" />
+      <!-- ego in global -->
+      <rect x="40" y="168" width="50" height="18" rx="3" fill="#1f6feb" />
+      <text x="65" y="181" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">EGO</text>
+      <!-- global axes -->
+      <line x1="20" y1="200" x2="300" y2="200" stroke="#aaa" stroke-width="1" />
+      <line x1="20" y1="200" x2="20" y2="30" stroke="#aaa" stroke-width="1" />
+      <text x="305" y="204" fill="#aaa" font-size="11">X</text>
+      <text x="12" y="26" fill="#aaa" font-size="11">Y</text>
+      <text x="55" y="145" fill="#e08a2e" font-size="11">경로 점</text>
+
+      <!-- arrow -->
+      <line x1="330" y1="115" x2="390" y2="115" stroke="#1f6feb" stroke-width="2" />
+      <polygon points="390,115 378,110 378,120" fill="#1f6feb" />
+      <text x="355" y="108" fill="#1f6feb" font-size="11" text-anchor="middle">변환</text>
+      <text x="355" y="130" fill="#1f6feb" font-size="10" text-anchor="middle">R(−yaw)</text>
+
+      <!-- Local frame (right) -->
+      <text x="415" y="25" fill="#5b6675" font-size="13" font-weight="600">Local Frame (ego 기준)</text>
+      <!-- local path curve (fitted polynomial) -->
+      <path d="M 430 150 Q 530 60 700 90" stroke="#1f7a3d" stroke-width="2.5" fill="none" stroke-dasharray="6 3" />
+      <!-- local path points -->
+      <circle cx="450" cy="138" r="5" fill="#e08a2e" />
+      <circle cx="500" cy="100" r="5" fill="#e08a2e" />
+      <circle cx="560" cy="76" r="5" fill="#e08a2e" />
+      <circle cx="620" cy="80" r="5" fill="#e08a2e" />
+      <circle cx="680" cy="90" r="5" fill="#e08a2e" />
+      <!-- ego at local origin -->
+      <rect x="410" y="143" width="50" height="18" rx="3" fill="#1f6feb" />
+      <text x="435" y="156" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">EGO</text>
+      <!-- local axes -->
+      <line x1="435" y1="170" x2="760" y2="170" stroke="#aaa" stroke-width="1" />
+      <line x1="435" y1="170" x2="435" y2="30" stroke="#aaa" stroke-width="1" />
+      <text x="765" y="174" fill="#aaa" font-size="11">x_local</text>
+      <text x="415" y="26" fill="#aaa" font-size="11">y_local</text>
+      <text x="560" y="65" fill="#1f7a3d" font-size="11">다항식 근사</text>
+    </svg>
+    <figcaption>그림 1. 글로벌 경로 점들을 ego 로컬 좌표로 변환하고 다항식으로 피팅한다.</figcaption>
+  </div>
+
+  <h2><span class="num">2</span>주어진 환경</h2>
+  <p>이 모듈은 시간 시뮬레이션이 없는 <b>순수 수학 유틸리티</b>입니다. 플랜트 모델 대신 다음 테스트 픽스처가 주어집니다:</p>
+  <ul>
+    <li>알려진 수학적 입력 (좌표 점, 다항식 계수)으로 출력을 수치 정확도로 검증.</li>
+    <li>이 모듈의 출력(계수 배열)은 06/07/08/09 의 제어기가 그대로 입력으로 사용합니다.</li>
+  </ul>
+
+  <h2><span class="num">3</span>구현 과제</h2>
+  <p>
+    <code>frame_transform.py</code>에서 세 클래스를 모두 구현하세요.
+  </p>
+
+  <h3>① Global2Local</h3>
+  <pre>class Global2Local:
+    def __init__(self, num_points: int): ...
+    def convert(self, points: np.ndarray, yaw_ego: float,
+                x_ego: float, y_ego: float) -> np.ndarray
+        # (num_points, 2) local frame points — self.local_points 에도 저장</pre>
+  <table>
+    <tr><th>인자</th><th>의미</th></tr>
+    <tr><td><code>points</code></td><td>글로벌 좌표 점 배열 (N, 2)</td></tr>
+    <tr><td><code>yaw_ego</code></td><td>ego 의 현재 heading 각도 [rad]</td></tr>
+    <tr><td><code>x_ego, y_ego</code></td><td>ego 의 글로벌 위치 [m]</td></tr>
+    <tr><td><b>반환</b></td><td>로컬 좌표 점 배열 (N, 2), <code>self.local_points</code> 에도 저장</td></tr>
+  </table>
+
+  <h3>② PolynomialFitting</h3>
+  <pre>class PolynomialFitting:
+    def __init__(self, degree: int, num_points: int): ...
+    def fit(self, points: np.ndarray) -> np.ndarray
+        # (degree+1, 1) column — self.coeff 에도 저장</pre>
+  <table>
+    <tr><th>인자</th><th>의미</th></tr>
+    <tr><td><code>points</code></td><td>로컬 좌표 점 배열 (N, 2)</td></tr>
+    <tr><td><b>반환</b></td><td>다항식 계수 배열 (degree+1, 1), <b>고차 → 저차</b> 순서, <code>self.coeff</code> 에도 저장</td></tr>
+  </table>
+
+  <h3>③ PolynomialValue</h3>
+  <pre>class PolynomialValue:
+    def __init__(self, degree: int, num_x: int): ...
+    def calculate(self, coeff: np.ndarray, x: np.ndarray) -> np.ndarray
+        # (num_x, 1) y values — self.y, self.points 에도 저장</pre>
+  <table>
+    <tr><th>인자</th><th>의미</th></tr>
+    <tr><td><code>coeff</code></td><td>다항식 계수 (degree+1, 1), 고차 → 저차</td></tr>
+    <tr><td><code>x</code></td><td>평가할 x 값 배열</td></tr>
+    <tr><td><b>반환</b></td><td>y 값 배열 (num_x, 1), <code>self.y</code>/<code>self.points</code> 에도 저장</td></tr>
+  </table>
+
+  <div class="note">
+    <b>계수 순서 주의:</b> <code>coeff[0]</code>이 최고차 항(<code>x^degree</code>)의 계수,
+    <code>coeff[-1]</code>이 상수항입니다. 06/07/08/09 가 이 순서에 의존합니다.
+  </div>
+
+  <h3>게인·파라미터 튜닝</h3>
+  <p>
+    이 과제에서 구현하는 것은 <b>알고리즘 로직</b> 입니다 — 라이브러리 코드의 시그니처는
+    고정이고 본문(<code># TODO</code>)만 채웁니다. 게인·파라미터의 실제 <b>값</b> 은 코드가
+    아니라 실행 파일에서 정하며, 세 군데의 역할이 다릅니다.
+  </p>
+  <ul>
+    <li><b>라이브러리 코드</b> (구현 대상) — 알고리즘만 구현. 게인·파라미터는 매개변수로 받기만 하고 값은 담지 않음.</li>
+    <li><b>producer</b> (<code>record_gen.py</code> / <code>demo.py</code>) — 게인·파라미터 값을 정하는 곳. <b>release 기본값은 0</b> 이라 그대로 실행하면 응답이 없거나 오류가 납니다 → 직접 값을 채워 실행하며 응답 변화를 비교하세요 (자유롭게 변경 OK).</li>
+    <li><b><code>test_*.py</code></b> — 합격 기준 검증용 값. <b>변경 금지</b>.</li>
+  </ul>
+  <p>이 문제는 따로 튜닝할 게인·파라미터가 없습니다 — 알고리즘 구현에만 집중하세요.</p>
+
+  <h2><span class="num">4</span>실행 방법</h2>
+  <p>모든 명령은 git 저장소 루트에서 실행합니다.</p>
+
+  <h3>구현 파일</h3>
+  <pre>01_Python_project/release/03_vehicle_control/05_frame_transform/frame_transform.py</pre>
+
+  <h3>테스트 — 합격 기준 검증</h3>
+  <pre>uv run pytest 01_Python_project/release/03_vehicle_control/05_frame_transform/ -v</pre>
+
+  <h3>정적 데모 (plotly — 변환 전후 시각화)</h3>
+  <pre>uv run python 01_Python_project/release/03_vehicle_control/05_frame_transform/demo.py</pre>
+  <p>이 모듈은 시간축 시뮬이 없는 정적 수학 유틸리티라 <code>record_gen.py</code> + Rerun 흐름 대신 plotly 2패널 데모를 사용합니다.</p>
+
+  <h2><span class="num">5</span>합격 기준 <span class="tag">pytest</span></h2>
+  <p>동작 시뮬이 아닌 <b>수치 정확성</b>으로 검증합니다.</p>
+  <ol class="pass-list">
+    <li><b>회전 + 평행이동</b> — <code>yaw=π/2, ego at (10, 5)</code>에서 global <code>(11, 5)</code> → local <code>(0, −1)</code> (tolerance <code>1e-12</code>).</li>
+    <li><b>다항식 피팅 정확도</b> — 알려진 cubic 의 sample 점들로 fit → 계수가 정답과 일치 (tolerance <code>1e-9</code>).</li>
+    <li><b>다항식 평가 정확도</b> — <code>coeff = [0, 0, 2, -1]</code> → <code>y = 2x − 1</code>이 모든 x 에서 일치.</li>
+  </ol>
+
+  <h2><span class="num">6</span>힌트</h2>
+  <ul>
+    <li>회전각: <code>θ = −yaw_ego</code> (음수 부호). ego 좌표계로 돌리려면 반대 방향으로 회전해야 합니다.</li>
+    <li>LSQ 정상방정식: <code>coeff = (AᵀA)⁻¹Aᵀb</code> — <code>np.linalg.inv</code>를 사용하세요.</li>
+    <li>설계 행렬 <code>A</code>의 열 순서에 주의: <code>A[i][j] = x_i^(degree−j)</code>.</li>
+  </ul>
+
+  <h2><span class="num">7</span>제약</h2>
+  <ul>
+    <li><code>test_frame_transform.py</code> — <b>수정 금지</b>.</li>
+    <li>세 클래스의 시그니처, 특히 <code>coeff</code> shape <code>(degree+1, 1)</code> column 형태 — <b>변경 금지</b> (06/07/08/09 호환).</li>
+    <li><code>local_points</code>, <code>coeff</code>, <code>y</code>, <code>points</code> 속성 이름 — 변경 금지 (후속 파이프라인이 직접 접근).</li>
+  </ul>
+
+  <hr>
+  <p class="footer">
+    IVS — Intelligent Vehicle Systems · Chapter 3 Vehicle Control · 05_frame_transform<br>
+    구현 파일: <code>frame_transform.py</code> · 검증: <code>pytest</code> · 시각화: <code>demo.py</code> (plotly)
+  </p>
+
+</body>
+
+</html>

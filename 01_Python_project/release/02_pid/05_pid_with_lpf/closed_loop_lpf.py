@@ -1,6 +1,6 @@
 """Closed-loop integration glue — measure → filter → control → actuate.
 
-과제 명세는 README.md 참조.
+과제 명세는 problem.html 참조.
 """
 from __future__ import annotations
 
@@ -8,11 +8,6 @@ from __future__ import annotations
 def closed_loop_step(
     plant, estimator, controller, target: float,
 ) -> tuple[float, float, float, float]:
-    y_measure = plant.measure()        # 노이즈 포함 관측
-    y_estimate = estimator.step(y_measure)  # LPF 평활
-    u = controller.step(target, y_estimate) # PID 는 추정값 사용 (raw 노이즈 ❌)
-    plant.step(u)                      # actuator → 동역학 한 스텝
-    return plant.y, y_measure, y_estimate, u
     """One step of closed-loop simulation with measurement filter.
 
     Order matters: estimator must filter the noisy measurement BEFORE the

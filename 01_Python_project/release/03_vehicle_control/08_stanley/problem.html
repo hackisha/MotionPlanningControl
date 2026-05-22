@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>과제 — 기하학적 횡방향 제어 (Stanley)</title>
+  <style>
+    :root {
+      --ink: #1a2330;
+      --muted: #5b6675;
+      --line: #d9dee6;
+      --accent: #1f6feb;
+      --accent-soft: #e8f0fe;
+      --warn: #b3541e;
+      --warn-soft: #fdf0e6;
+      --ok: #1f7a3d;
+      --code-bg: #f4f6f9;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      line-height: 1.7;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 28px 96px;
+      background: #fff;
+    }
+
+    h1 { font-size: 1.7rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+    .subtitle { color: var(--muted); font-size: 0.98rem; margin-bottom: 28px; }
+
+    h2 {
+      font-size: 1.18rem;
+      margin: 38px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--line);
+    }
+
+    h2 .num {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.82rem;
+      width: 1.55em; height: 1.55em; line-height: 1.55em;
+      text-align: center;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: 1px;
+    }
+
+    h3 { font-size: 1.02rem; margin: 22px 0 6px; }
+    p { margin: 8px 0; }
+
+    code {
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .scenario-card {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 1.02rem;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 0.94rem;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: var(--code-bg); font-weight: 600; }
+
+    ul, ol { margin: 8px 0; padding-left: 24px; }
+    li { margin: 4px 0; }
+
+    .note {
+      background: var(--warn-soft);
+      border-left: 4px solid var(--warn);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 0.94rem;
+    }
+
+    .note b { color: var(--warn); }
+
+    .fig { margin: 22px 0; text-align: center; }
+    .fig figcaption { color: var(--muted); font-size: 0.88rem; margin-top: 8px; }
+
+    .pass-list li { margin: 8px 0; }
+    .pass-list b { color: var(--ok); }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-left: 6px;
+      vertical-align: 2px;
+    }
+
+    hr { border: none; border-top: 1px solid var(--line); margin: 32px 0; }
+    .footer { color: var(--muted); font-size: 0.84rem; margin-top: 40px; }
+  </style>
+</head>
+
+<body>
+
+  <h1>횡방향 제어 — Stanley (heading + cross-track 합성)</h1>
+  <p class="subtitle">Chapter 3 · Vehicle Control / 08_stanley &nbsp;|&nbsp; 현재 위치의 두 오차를 합성하는 DARPA Grand Challenge 우승 방식</p>
+
+  <div class="scenario-card">
+    Pure Pursuit 과 다른 두 번째 기하학적 횡방향 제어기입니다.
+    현재 ego 위치에서 경로까지의 <b>heading 오차</b>와 <b>cross-track 오차</b>를 합성해 조향각을 결정하는
+    Stanley 제어기를 구현해 보세요. <b>stateless</b> 입니다.
+  </div>
+
+  <h2><span class="num">1</span>문제 상황</h2>
+  <p>
+    차량은 <code>Y0 = 2 m</code>(도로 밖)에서 출발해 직선 도로(<code>Y = 0</code>, 첫 40 m)로 수렴한 뒤,
+    sine 형태의 곡선 도로로 진입합니다.
+  </p>
+  <ul>
+    <li>Pure Pursuit 이 <em>미래의 lookahead 점</em>을 보는 것과 달리, Stanley 는 <em>현재 위치의 두 오차</em>를 봅니다.</li>
+    <li>두 방식의 특성을 같은 시나리오·같은 파이프라인으로 비교할 수 있습니다.</li>
+    <li>역시 <b>stateless</b> — 내부에 이전 호출 상태를 저장하지 않습니다.</li>
+  </ul>
+
+  <div class="fig">
+    <svg viewBox="0 0 820 220" width="100%" style="max-width:780px" xmlns="http://www.w3.org/2000/svg"
+      aria-label="stanley diagram">
+      <!-- reference path (직선 → sine, 위상 π/2 부터 접선 연속) -->
+      <line x1="40" y1="140" x2="300" y2="140" stroke="#1f7a3d" stroke-width="2.5" />
+      <path d="M 300 140 C 335 140 345 182 380 182 C 415 182 425 140 460 140 C 495 140 505 182 540 182 C 575 182 585 140 620 140 C 655 140 665 182 700 182 C 720 182 730 165 740 165"
+            stroke="#1f7a3d" stroke-width="2.5" fill="none" />
+      <text x="170" y="130" text-anchor="middle" fill="#1f7a3d" font-size="12">경로 (Y=0 → sine)</text>
+
+      <!-- ego vehicle (offset from path) -->
+      <rect x="100" y="105" width="50" height="18" rx="3" fill="#1f6feb" />
+      <text x="125" y="118" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">EGO</text>
+      <!-- ego heading arrow -->
+      <line x1="150" y1="114" x2="210" y2="114" stroke="#1f6feb" stroke-width="2" />
+      <polygon points="210,114 198,109 198,119" fill="#1f6feb" />
+      <text x="180" y="106" fill="#1f6feb" font-size="10">heading</text>
+
+      <!-- closest point on path -->
+      <circle cx="125" cy="140" r="5" fill="#1f7a3d" />
+    </svg>
+    <figcaption>그림 1. Stanley — 현재 위치의 heading 오차(ψ_e)와 cross-track 오차(e_y)를 합성해 δ 를 결정한다.</figcaption>
+  </div>
+
+  <h2><span class="num">2</span>주어진 환경</h2>
+  <p>
+    <code>vehicle_lat_stanley.py</code>의 <code>VehicleLat</code> kinematic bicycle 모델과
+    <code>lateral_pipeline_stanley.py</code>의 <code>LateralPipeline</code>이 제공됩니다.
+    파이프라인은 Global2Local → PolynomialFitting → PolynomialValue → <b>여러분의 Stanley</b> 순서로 연결합니다.
+  </p>
+  <ul>
+    <li>경로: 직선(<code>Y=0</code>, 0~40 m) + sine(<code>Y = 2·(cos((x−40)/14) − 1)</code>).</li>
+    <li>초기 조건: <code>Y0 = 2 m</code>, <code>vx = 3 m/s</code>.</li>
+    <li>Stanley 는 lookahead 점 없이 <b>현재 위치(x=0)</b>의 다항식 값에서 오차를 추출합니다.</li>
+    <li>다항식 계수: <code>coeff[-1]</code> = 상수항 = <code>y(0)</code> = cross-track 오차,
+      <code>coeff[-2]</code> = 1차 계수 = heading 오차.</li>
+  </ul>
+
+  <h2><span class="num">3</span>구현 과제</h2>
+  <p>
+    <code>stanley.py</code>의 <code>Stanley.step()</code> 메소드를 구현하세요.
+  </p>
+  <pre>class Stanley:
+    def __init__(self, k: float = 1.0, epsilon: float = 1e-3): ...
+
+    def step(self, coeff: np.ndarray, vx: float) -> float
+        """조향각 δ (rad) 를 반환 — stateless."""</pre>
+  <table>
+    <tr><th>인자</th><th>의미</th></tr>
+    <tr><td><code>coeff</code></td><td>로컬 프레임 다항식 계수 (degree+1, 1) — 05 의 출력 그대로</td></tr>
+    <tr><td><code>vx</code></td><td>현재 차량 속도 [m/s] — 분모에 사용</td></tr>
+    <tr><td><b>반환</b></td><td>조향각 δ [rad] — <b>내부 상태 없음</b></td></tr>
+  </table>
+  <ul>
+    <li><code>k</code> = cross-track gain (기본 1.0), <code>epsilon</code> = 저속 분모 0 방지.</li>
+    <li><b>stateless</b> — 이전 호출 상태 저장 없음.</li>
+  </ul>
+
+  <h3>게인·파라미터 튜닝</h3>
+  <p>
+    이 과제에서 구현하는 것은 <b>알고리즘 로직</b> 입니다 — 라이브러리 코드의 시그니처는
+    고정이고 본문(<code># TODO</code>)만 채웁니다. 게인·파라미터의 실제 <b>값</b> 은 코드가
+    아니라 실행 파일에서 정하며, 세 군데의 역할이 다릅니다.
+  </p>
+  <ul>
+    <li><b>라이브러리 코드</b> (구현 대상) — 알고리즘만 구현. 게인·파라미터는 매개변수로 받기만 하고 값은 담지 않음.</li>
+    <li><b>producer</b> (<code>record_gen.py</code> / <code>demo.py</code>) — 게인·파라미터 값을 정하는 곳. <b>release 기본값은 0</b> 이라 그대로 실행하면 응답이 없거나 오류가 납니다 → 직접 값을 채워 실행하며 응답 변화를 비교하세요 (자유롭게 변경 OK).</li>
+    <li><b><code>test_*.py</code></b> — 합격 기준 검증용 값. <b>변경 금지</b>.</li>
+  </ul>
+  <p><b>이 문제에서 바꾸는 줄</b> — <code>record_gen.py</code> 의 아래 줄. release 기본값은 0 이니 여기에 값을 채우세요:</p>
+  <pre>    s = Stanley(k=0.0)</pre>
+
+  <h2><span class="num">4</span>실행 방법</h2>
+  <p>모든 명령은 git 저장소 루트에서 실행합니다.</p>
+
+  <h3>구현 파일</h3>
+  <pre>01_Python_project/release/03_vehicle_control/08_stanley/stanley.py</pre>
+
+  <h3>테스트 — 합격 기준 검증</h3>
+  <pre>uv run pytest 01_Python_project/release/03_vehicle_control/08_stanley/ -v</pre>
+
+  <h3>시나리오 실행 → record JSON 생성 + Rerun viewer 자동 실행</h3>
+  <pre>uv run python 01_Python_project/release/03_vehicle_control/08_stanley/record_gen.py</pre>
+  <p>
+    파라미터(<code>k</code>)는 release 기본값이 <code>0</code>이므로 <code>record_gen.py</code> 안에서 직접 채우세요.
+    JSON만 생성하려면 <code>--no-viewer</code>를 붙입니다.
+  </p>
+
+  <h3>Rerun viewer 재생</h3>
+  <pre>uv run python 01_Python_project/release/03_vehicle_control/simulator_vehicle_control.py 01_Python_project/release/03_vehicle_control/08_stanley/</pre>
+
+  <h3>디버그 신호 — 심화 분석 (선택)</h3>
+  <p>
+    <code>record_gen.py</code> 의 <code>dbg.add(...)</code> 블록에는 <code>debug1/2/3</code> 주석
+    placeholder 가 준비돼 있습니다. 주석을 풀고 분석하고 싶은 값·식(예: 추적 오차, 내부 상태)을
+    채우면 그 신호가 record 에 함께 저장됩니다 — 신호 추가·삭제·수정은 이 <code>dbg.add()</code>
+    호출의 kwarg 한 줄로 끝납니다.
+  </p>
+  <p>
+    디버그 신호는 viewer 기본 화면에는 나타나지 않습니다 — Rerun viewer 좌측 entity 패널에서
+    <code>/debug/&lt;이름&gt;</code> 항목을 골라 TimeSeriesView 를 직접 추가하면 시계열로 볼 수 있습니다.
+    구현이 막힐 때 내부 신호를 들여다보는 디버깅 도구로 활용하세요.
+  </p>
+
+  <h2><span class="num">5</span>합격 기준 <span class="tag">pytest</span></h2>
+  <ol class="pass-list">
+    <li><b>곡선 경로 추적 오차</b> — <code>k=1.0, vx=3</code>, Y0=2, 30초 pipeline,
+      tail 평균 <code>|lateral err| &lt; 0.4 m</code>, peak <code>&lt; 2.2 m</code>.</li>
+  </ol>
+
+  <h2><span class="num">6</span>힌트</h2>
+  <ul>
+    <li>다항식 계수 인덱스를 확인하세요: <code>coeff[-1]</code>이 상수항(= cross-track 오차 <code>e_y</code>),
+      <code>coeff[-2]</code>가 1차 계수(= heading 오차 <code>ψ_e</code>)입니다.</li>
+    <li><code>epsilon</code>은 <code>vx ≈ 0</code> 일 때 분모 0 을 막습니다 — 분모에 더해야 합니다.</li>
+    <li>Pure Pursuit 과 비교: Stanley 는 lookahead 없이 현재 위치만 봅니다. 저속에서는 Stanley 가 더 정밀하고, 고속 곡선에서는 Pure Pursuit 이 유리할 수 있습니다.</li>
+    <li>역시 내부에 상태를 만들지 마세요 — stateless 입니다.</li>
+  </ul>
+
+  <h2><span class="num">7</span>제약</h2>
+  <ul>
+    <li><code>vehicle_lat_stanley.py</code>, <code>lateral_pipeline_stanley.py</code>, <code>test_stanley.py</code> — <b>수정 금지</b>.</li>
+    <li><code>step()</code>의 시그니처 변경 금지.</li>
+    <li>05 의 <code>frame_transform.py</code> 수정 금지 — 파이프라인이 sys.path 로 import 합니다.</li>
+    <li><code>record_gen.py</code>에서 파라미터 실험 — <code>test_*.py</code>의 값은 변경 금지.</li>
+  </ul>
+
+  <hr>
+  <p class="footer">
+    IVS — Intelligent Vehicle Systems · Chapter 3 Vehicle Control · 08_stanley<br>
+    구현 파일: <code>stanley.py</code> · 검증: <code>pytest</code> · 시각화: Rerun viewer
+  </p>
+
+</body>
+
+</html>

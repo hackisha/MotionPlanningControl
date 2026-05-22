@@ -14,7 +14,7 @@ PurePursuit 솔루션은 본 폴더 self-contained. 학생이 Stanley / LatPIDFF
     pid = LatPIDFF(kp=0.2, kd=0.1, ki=0.0, kff=0.1, dt=0.1)
     lat = LateralController(pid, lookahead_x_fn=lambda vx: vx * pid.lookahead_time)
 
-과제 명세는 README.md 참조.
+과제 명세는 problem.html 참조.
 """
 from __future__ import annotations
 

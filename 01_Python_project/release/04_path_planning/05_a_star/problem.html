@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>과제 — A* heuristic 경로 탐색</title>
+  <style>
+    :root {
+      --ink: #1a2330;
+      --muted: #5b6675;
+      --line: #d9dee6;
+      --accent: #1f6feb;
+      --accent-soft: #e8f0fe;
+      --warn: #b3541e;
+      --warn-soft: #fdf0e6;
+      --ok: #1f7a3d;
+      --code-bg: #f4f6f9;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      line-height: 1.7;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 28px 96px;
+      background: #fff;
+    }
+
+    h1 {
+      font-size: 1.7rem;
+      margin: 0 0 4px;
+      letter-spacing: -0.01em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.98rem;
+      margin-bottom: 28px;
+    }
+
+    h2 {
+      font-size: 1.18rem;
+      margin: 38px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--line);
+    }
+
+    h2 .num {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.82rem;
+      width: 1.55em;
+      height: 1.55em;
+      line-height: 1.55em;
+      text-align: center;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: 1px;
+    }
+
+    h3 {
+      font-size: 1.02rem;
+      margin: 22px 0 6px;
+    }
+
+    p {
+      margin: 8px 0;
+    }
+
+    code {
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .scenario-card {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 1.02rem;
+    }
+
+    .formula {
+      background: #fbfcfe;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 14px 0;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.96rem;
+    }
+
+    .formula .lbl {
+      color: var(--muted);
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 0.94rem;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--code-bg);
+      font-weight: 600;
+    }
+
+    ul,
+    ol {
+      margin: 8px 0;
+      padding-left: 24px;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    .note {
+      background: var(--warn-soft);
+      border-left: 4px solid var(--warn);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 0.94rem;
+    }
+
+    .note b {
+      color: var(--warn);
+    }
+
+    .fig {
+      margin: 22px 0;
+      text-align: center;
+    }
+
+    .fig figcaption {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-top: 8px;
+    }
+
+    .pass-list li {
+      margin: 8px 0;
+    }
+
+    .pass-list b {
+      color: var(--ok);
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-left: 6px;
+      vertical-align: 2px;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 32px 0;
+    }
+
+    .footer {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>A* — heuristic 기반 8-connected 최단 경로</h1>
+  <p class="subtitle">Chapter 4 · Path Planning / 05_a_star &nbsp;|&nbsp; Dijkstra 에 방향성을 더해 탐색을 줄인다</p>
+
+  <div class="scenario-card">
+    <b>A* 알고리즘</b>으로 격자 미로에서 start 부터 goal 까지 최단 경로를 탐색하세요.
+    Dijkstra(04)와 같은 8-connected 격자이지만, <b>heuristic</b> 을 도입해 expand 횟수를 줄입니다.
+  </div>
+
+  <div class="note">
+    <b>이 과제는 차량 제어가 없습니다.</b> 결과는 Rerun 2D viewer 의 노드 expansion 과 최종 경로로만 확인합니다.
+  </div>
+
+  <h2><span class="num">1</span>문제 상황</h2>
+  <p>
+    Dijkstra 는 시작점부터의 누적 cost <code>g</code> 만 보고 <b>모든 방향으로 균등하게</b> 확장합니다 —
+    goal 이 어디 있든 상관없이 퍼지죠. A* 는 거기에 <b>goal 까지 남은 거리 추정치</b>(heuristic <code>h</code>)를
+    더해, goal 방향을 우선 확장하므로 같은 답을 더 적은 expand 로 찾습니다.
+  </p>
+  <table>
+    <tr><th></th><th>Dijkstra (04)</th><th>A* (05)</th></tr>
+    <tr><td>우선순위</td><td><code>f = g</code></td><td><code>f = g + weight · h</code></td></tr>
+    <tr><td>확장 패턴</td><td>모든 방향 균등</td><td>goal 방향 우선</td></tr>
+  </table>
+  <ul>
+    <li><code>weight_heuristic = 1.0</code> (admissible) — 최단 경로를 보장합니다.</li>
+    <li><code>weight_heuristic &gt; 1</code> — greedy bias. expand 수는 줄지만 최적성은 약해집니다.</li>
+  </ul>
+
+  <div class="fig">
+    <svg viewBox="0 0 300 300" width="100%" style="max-width:340px" xmlns="http://www.w3.org/2000/svg"
+      aria-label="a-star grid maze">
+      <rect x="0" y="0" width="300" height="300" fill="#f4f6f9" />
+      <g stroke="#e3e7ec" stroke-width="1">
+        <line x1="60" y1="0" x2="60" y2="300" />
+        <line x1="120" y1="0" x2="120" y2="300" />
+        <line x1="180" y1="0" x2="180" y2="300" />
+        <line x1="240" y1="0" x2="240" y2="300" />
+        <line x1="0" y1="60" x2="300" y2="60" />
+        <line x1="0" y1="120" x2="300" y2="120" />
+        <line x1="0" y1="180" x2="300" y2="180" />
+        <line x1="0" y1="240" x2="300" y2="240" />
+      </g>
+      <rect x="0" y="0" width="300" height="300" fill="none" stroke="#2a2f3a" stroke-width="6" />
+      <!-- central vertical wall x=30, y=10..50 (svg x=150, y 50..250) -->
+      <line x1="150" y1="50" x2="150" y2="250" stroke="#2a2f3a" stroke-width="6" />
+      <!-- box top/bottom faces y=10/y=50, x=20..40 (svg y=250 / y=50, x 100..200) -->
+      <line x1="100" y1="250" x2="200" y2="250" stroke="#2a2f3a" stroke-width="6" />
+      <line x1="100" y1="50" x2="200" y2="50" stroke="#2a2f3a" stroke-width="6" />
+      <!-- start (10,30) svg (50,150) -->
+      <circle cx="50" cy="150" r="9" fill="#1f6feb" />
+      <text x="50" y="138" text-anchor="middle" fill="#1f6feb" font-size="11" font-weight="700">S</text>
+      <!-- goal (50,30) svg (250,150) -->
+      <circle cx="250" cy="150" r="9" fill="#d6453d" />
+      <text x="250" y="138" text-anchor="middle" fill="#d6453d" font-size="11" font-weight="700">G</text>
+    </svg>
+    <figcaption>그림 1. map_2 격자 — 중앙 vertical wall + box 의 상·하 면. 좌·우 면은 열려 있어 중앙 벽을 우회해야 한다.</figcaption>
+  </div>
+
+  <h2><span class="num">2</span>Map 구조 <span class="tag">map_2</span></h2>
+  <ul>
+    <li>외곽 border + 중앙 vertical wall(<code>x=30, y=10..50</code>).</li>
+    <li>box 의 상·하 면(<code>y=10 / y=50, x=20..40</code>) — 좌·우 면(<code>x=20 / x=40</code>)은 개방.</li>
+    <li>start <code>(10, 30)</code>, goal <code>(50, 30)</code> — 둘 다 box 밖, 중앙 벽 우회 필수.</li>
+  </ul>
+
+  <h2><span class="num">3</span>구현 과제</h2>
+  <p>
+    <code>a_star.py</code> 의 <code>a_star()</code> 함수 본문(<code># TODO</code>)을 구현하세요. 시그니처는 이미 주어져 있습니다.
+  </p>
+  <pre>def a_star(
+    start: tuple[int, int],
+    goal: tuple[int, int],
+    obstacles: set[tuple[int, int]],
+    weight_heuristic: float = 1.0,
+    on_step: Callable[[tuple[int, int], set[tuple[int, int]], float, float], None] | None = None,
+) -> list[tuple[int, int]]</pre>
+  <table>
+    <tr>
+      <th>인자</th>
+      <th>의미</th>
+    </tr>
+    <tr>
+      <td><code>obstacles</code></td>
+      <td>벽 셀의 집합 — O(1) 포함 검사용 <code>set</code>.</td>
+    </tr>
+    <tr>
+      <td><code>weight_heuristic</code></td>
+      <td>heuristic 가중치(기본 1.0). <code>f = g + weight · h</code> 의 <code>weight</code>.</td>
+    </tr>
+    <tr>
+      <td><code>on_step</code></td>
+      <td>매 노드 expand 직후 호출되는 시각화 콜백 — <code>(current, open_set, g_cost, f_cost)</code>. <code>open_set</code> 은 그 시점의 open list, <code>g_cost</code> 는 current 의 누적 비용, <code>f_cost = g + weight·h</code>. <code>None</code> 이면 호출 안 함.</td>
+    </tr>
+    <tr>
+      <td><b>반환</b></td>
+      <td>경로 list(start → goal). 미발견 시 <code>[]</code>.</td>
+    </tr>
+  </table>
+  <p>거리 계산용 <code>_euclid(a, b)</code> 도우미가 <code>a_star.py</code> 에 이미 정의돼 있습니다.</p>
+
+  <h3>게인·파라미터 튜닝</h3>
+  <p>
+    이 과제에서 구현하는 것은 <b>알고리즘 로직</b> 입니다. 튜닝할 수 있는 값은 <code>weight_heuristic</code>
+    하나로, <code>record_gen.py</code> 의 <code>--weight</code> 옵션으로 viewer 에서 자유롭게 실험할 수 있습니다
+    (예: <code>--weight 10</code> = greedy). <b>합격 기준 검증의 <code>weight=1.0</code> 은 <code>test_*.py</code> 에 박혀
+    있으며 변경 금지</b> 입니다 — admissible 한 1.0 에서만 최단성을 보장하기 때문입니다.
+  </p>
+
+  <h2><span class="num">4</span>실행 방법</h2>
+  <p>모든 명령은 git 저장소 루트에서 실행합니다.</p>
+
+  <h3>구현 파일</h3>
+  <pre>01_Python_project/release/04_path_planning/05_a_star/a_star.py</pre>
+
+  <h3>테스트 — 합격 기준 검증</h3>
+  <pre>uv run pytest 01_Python_project/release/04_path_planning/05_a_star/ -v</pre>
+
+  <h3>시나리오 실행 → record JSON 생성 + Rerun viewer 자동 실행</h3>
+  <pre>uv run python 01_Python_project/release/04_path_planning/05_a_star/record_gen.py</pre>
+  <p>
+    2D viewer 에 격자 + 장애물 + start + goal 이 표시되고, timeline scrubber <code>step</code> 으로 expand
+    진행을 재생합니다 — 우측 status 패널에 step / closed / open 카운트가 실시간으로 보입니다.
+  </p>
+  <ul>
+    <li>JSON 만 만들려면 <code>--no-viewer</code>.</li>
+    <li><code>--skip N</code> 으로 frame subsample(기본 10).</li>
+    <li><code>--weight W</code> 로 heuristic 가중치 조정(기본 1.0, <code>--weight 10</code> = greedy).</li>
+  </ul>
+
+  <h3>Rerun viewer 재생 (search 전용 simulator)</h3>
+  <pre>uv run python 01_Python_project/release/04_path_planning/simulator_search.py 01_Python_project/release/04_path_planning/05_a_star/</pre>
+  <p>인자 없이 실행하면 <code>04_path_planning/</code> 하위의 모든 search record 를 한 viewer 에 멀티 로드합니다 — A* 와 RRT 의 expansion 패턴을 나란히 비교할 수 있습니다.</p>
+
+  <h3>디버그 신호 — expansion 별 분석 (선택)</h3>
+  <p>
+    <code>record_gen.py</code> 의 <code>on_step</code> 콜백은 <b>매 노드 확장(expansion)</b>마다
+    호출됩니다 — 거기서 <code>goal_dist</code>(현재 노드→goal 거리)·<code>open_size</code>
+    (open list 크기)·<code>g_cost</code>(시작→current 누적 비용)·<code>h_cost</code>(heuristic
+    항 <code>weight·h</code>)·<code>f_cost</code>(총 비용 <code>g + weight·h</code>)를 record 의
+    <code>debug_scalars</code> 로 저장합니다. 더 분석할 값은 <code>dbg.add(...)</code> 의
+    kwarg 한 줄로 추가할 수 있습니다.
+  </p>
+  <p>
+    디버그 신호는 viewer 기본 화면에는 없습니다 — 좌측 entity 패널에서 <code>/debug/&lt;이름&gt;</code> 을
+    골라 TimeSeriesView 를 추가하세요. 하단 타임라인은 <b>기본이 <code>iteration</code></b>
+    (expansion 단위)이라 디버그 곡선이 expansion 축으로 곧바로 보입니다. frame 단위
+    (<code>--skip</code> 묶음)로 재생하려면 타임라인 드롭다운에서 <code>step</code> 을 고르세요.
+  </p>
+  <p>
+    A* 의 <code>goal_dist</code> 를 Dijkstra(04)와 나란히 비교하면 heuristic 효과가 한눈에
+    보입니다 — Dijkstra 는 front 가 사방으로 퍼져 들쭉날쭉하고, A* 는 goal 쪽으로 곧장
+    줄어듭니다.
+  </p>
+
+  <h2><span class="num">5</span>합격 기준 <span class="tag">pytest</span></h2>
+  <p>알고리즘 형태(정통 A* / heapq priority queue / 다른 변종)는 자유 — 동작 명세(behavioral spec)만 검증합니다.</p>
+  <ol class="pass-list">
+    <li><b>시작·끝 일치</b> — <code>path[0] == start</code>, <code>path[-1] == goal</code>.</li>
+    <li><b>장애물 회피</b> — 모든 path 노드가 <code>obstacles</code> 밖.</li>
+    <li><b>8-connectivity</b> — 연속 노드 간 이동이 8방향 중 하나.</li>
+    <li><b>admissible 최단성</b> — <code>weight_heuristic=1.0</code> 에서 path cost 가 reference 의 1.05배 이내.</li>
+    <li><b>on_step 콜백 호출</b> — 첫 호출의 current 가 start, 호출 횟수 ≥ path 길이.</li>
+  </ol>
+  <div class="note">
+    <b>주의:</b> heuristic 을 잘못 적용해 발산하거나 경로를 찾지 못하는 구현은 임계값 초과로 차단됩니다.
+  </div>
+
+  <h2><span class="num">6</span>힌트</h2>
+  <ul>
+    <li><b>Dijkstra 와의 차이는 우선순위 하나</b> — open 에서 노드를 고를 때 누적 cost <code>g</code> 만 보는 게
+      Dijkstra, <code>g + weight · h</code> 를 보는 게 A* 입니다. 나머지 루프 구조(open/closed, 이웃 확장,
+      경로 복원)는 04 와 똑같습니다.</li>
+    <li><b>heuristic <code>h</code></b> 는 현재 노드에서 goal 까지의 직선거리(<code>_euclid</code>)로 잡습니다 —
+      실제 거리를 넘지 않으므로(admissible) 최단성이 보장됩니다.</li>
+    <li>이웃을 확장할 때 자식의 <code>g</code> 는 부모의 <code>g</code> + 이동 비용, 자식의 <code>f</code> 는
+      그 <code>g</code> 에 <code>weight · h</code> 를 더한 값입니다.</li>
+    <li>open 이 비면 경로 미발견 — 빈 list 를 반환합니다. 경로 복원 후에는 start → goal 순서로 뒤집어 반환하세요.</li>
+  </ul>
+
+  <h2><span class="num">7</span>제약</h2>
+  <ul>
+    <li><code>map_astar.py</code>, <code>record_gen.py</code>, <code>test_a_star.py</code> — <b>수정 금지</b> (검증 환경).</li>
+    <li><code>simulator_search.py</code>(Chapter 4 공용) — 수정 금지.</li>
+    <li><code>a_star()</code> 의 시그니처 변경 금지. <code>test_*.py</code> 의 <code>weight=1.0</code> 변경 금지.</li>
+    <li>알고리즘은 <b>순수 Python</b> 으로 구현 — numpy/scipy 의 path-finder 라이브러리 사용 금지.</li>
+  </ul>
+
+  <hr>
+  <p class="footer">
+    IVS — Intelligent Vehicle Systems · Chapter 4 Path Planning · 05_a_star<br>
+    구현 파일: <code>a_star.py</code> · 검증: <code>pytest</code> · 시각화: Rerun 2D viewer
+  </p>
+
+</body>
+
+</html>

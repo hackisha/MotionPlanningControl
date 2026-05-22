@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>과제 — 횡방향 Y-추종 PID (Kinematic Lateral PID)</title>
+  <style>
+    :root {
+      --ink: #1a2330;
+      --muted: #5b6675;
+      --line: #d9dee6;
+      --accent: #1f6feb;
+      --accent-soft: #e8f0fe;
+      --warn: #b3541e;
+      --warn-soft: #fdf0e6;
+      --ok: #1f7a3d;
+      --code-bg: #f4f6f9;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      line-height: 1.7;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 28px 96px;
+      background: #fff;
+    }
+
+    h1 { font-size: 1.7rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+    .subtitle { color: var(--muted); font-size: 0.98rem; margin-bottom: 28px; }
+
+    h2 {
+      font-size: 1.18rem;
+      margin: 38px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--line);
+    }
+
+    h2 .num {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.82rem;
+      width: 1.55em; height: 1.55em; line-height: 1.55em;
+      text-align: center;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: 1px;
+    }
+
+    h3 { font-size: 1.02rem; margin: 22px 0 6px; }
+    p { margin: 8px 0; }
+
+    code {
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .scenario-card {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 1.02rem;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 0.94rem;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: var(--code-bg); font-weight: 600; }
+
+    ul, ol { margin: 8px 0; padding-left: 24px; }
+    li { margin: 4px 0; }
+
+    .note {
+      background: var(--warn-soft);
+      border-left: 4px solid var(--warn);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 0.94rem;
+    }
+
+    .note b { color: var(--warn); }
+
+    .fig { margin: 22px 0; text-align: center; }
+    .fig figcaption { color: var(--muted); font-size: 0.88rem; margin-top: 8px; }
+
+    .pass-list li { margin: 8px 0; }
+    .pass-list b { color: var(--ok); }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-left: 6px;
+      vertical-align: 2px;
+    }
+
+    hr { border: none; border-top: 1px solid var(--line); margin: 32px 0; }
+    .footer { color: var(--muted); font-size: 0.84rem; margin-top: 40px; }
+  </style>
+</head>
+
+<body>
+
+  <h1>횡방향 제어 — Kinematic Lateral PID</h1>
+  <p class="subtitle">Chapter 3 · Vehicle Control / 04_kinematic_lateral &nbsp;|&nbsp; 직선 경로에서 Y 위치를 PID 로 추종하는 첫 횡방향 제어기</p>
+
+  <div class="scenario-card">
+    자율주행 차량의 <b>횡방향(조향) 제어</b>를 시작합니다.
+    kinematic bicycle 모델에서 PID 로 차량의 Y 위치를 목표 값으로 수렴시키는 제어기를 설계해 보세요.
+  </div>
+
+  <h2><span class="num">1</span>문제 상황</h2>
+  <p>
+    차량은 일정 속도 <code>vx = 3 m/s</code>로 X 방향으로 주행하며, Y 방향 위치를
+    목표 <code>Y_ref = 4 m</code>로 수렴·유지해야 합니다.
+  </p>
+  <ul>
+    <li>제어기의 출력은 <b>조향각 δ (라디안)</b>입니다.</li>
+    <li>차량 모델이 δ 를 받아 yaw rate 를 만들고, 그 결과로 Y 가 변합니다.</li>
+    <li>직선 경로 추종 — 곡선 경로는 이후 06/07/08 모듈에서 다룹니다.</li>
+  </ul>
+
+  <div class="fig">
+    <svg viewBox="0 0 820 230" width="100%" style="max-width:780px" xmlns="http://www.w3.org/2000/svg"
+      aria-label="kinematic lateral pid diagram">
+      <!-- road boundaries -->
+      <line x1="40" y1="40" x2="780" y2="40" stroke="#1f7a3d" stroke-width="2" stroke-dasharray="12 8" />
+      <text x="790" y="45" fill="#1f7a3d" font-size="12">Y_ref = 4 m</text>
+      <line x1="40" y1="170" x2="780" y2="170" stroke="#c2c9d4" stroke-width="2" />
+      <text x="790" y="175" fill="#5b6675" font-size="12">Y = 0</text>
+
+      <!-- vehicle trajectory (curved convergence) -->
+      <path d="M 60 170 C 200 170 300 60 500 48" stroke="#1f6feb" stroke-width="2.5" fill="none" stroke-dasharray="6 4" />
+
+      <!-- ego vehicle at start -->
+      <rect x="42" y="157" width="60" height="20" rx="4" fill="#1f6feb" />
+      <text x="72" y="172" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">EGO</text>
+      <circle cx="52" cy="179" r="7" fill="#2a2f3a" />
+      <circle cx="92" cy="179" r="7" fill="#2a2f3a" />
+
+      <!-- ego vehicle converged -->
+      <rect x="510" y="35" width="60" height="20" rx="4" fill="#1f6feb" />
+      <text x="540" y="50" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">EGO</text>
+      <circle cx="520" cy="57" r="7" fill="#2a2f3a" />
+      <circle cx="560" cy="57" r="7" fill="#2a2f3a" />
+
+      <!-- Y error arrow -->
+      <line x1="200" y1="170" x2="200" y2="100" stroke="#b3541e" stroke-width="2" />
+      <polygon points="200,96 195,108 205,108" fill="#b3541e" />
+      <text x="210" y="138" fill="#b3541e" font-size="12">Y 오차</text>
+
+      <!-- steering angle label -->
+      <path d="M 102 167 Q 130 150 150 162" stroke="#5b6675" stroke-width="1.5" fill="none" />
+      <text x="108" y="148" fill="#5b6675" font-size="11">δ (조향각)</text>
+
+      <!-- x axis arrow -->
+      <line x1="40" y1="200" x2="750" y2="200" stroke="#888" stroke-width="1.5" />
+      <polygon points="750,200 738,195 738,205" fill="#888" />
+      <text x="760" y="205" fill="#888" font-size="12">X</text>
+      <line x1="40" y1="30" x2="40" y2="200" stroke="#888" stroke-width="1.5" />
+      <polygon points="40,30 35,42 45,42" fill="#888" />
+      <text x="26" y="26" fill="#888" font-size="12">Y</text>
+    </svg>
+    <figcaption>그림 1. ego 가 Y=0 에서 출발해 PID 조향으로 Y_ref=4 m 로 수렴한다.</figcaption>
+  </div>
+
+  <h2><span class="num">2</span>플랜트 모델</h2>
+  <p>
+    <code>vehicle_lat_kinematic.py</code>의 <code>VehicleLat</code> kinematic bicycle 모델입니다.
+    매 스텝 dynamics:
+  </p>
+  <pre>δ_clipped  = clip(delta, −0.5, +0.5)        # rad (≈ ±28.6°)
+yawrate    = vx / (L + kv·vx²) · δ_clipped
+Yaw        ← Yaw + dt · yawrate
+X          ← X + vx·dt·cos(Yaw)
+Y          ← Y + vx·dt·sin(Yaw)</pre>
+  <ul>
+    <li>wheelbase <code>L = 4.0 m</code>, 속도 민감 파라미터 <code>kv = 0.005</code>.</li>
+    <li>조향각이 <code>±0.5 rad</code>로 포화됩니다 — 큰 값을 출력해도 실제 조향은 제한됩니다.</li>
+    <li>초기 조건: <code>X=0, Y=0, Yaw=0</code>.</li>
+  </ul>
+
+  <h2><span class="num">3</span>구현 과제</h2>
+  <p>
+    <code>kinematic_lateral_pid.py</code>의 <code>KinematicLateralPID.step()</code> 메소드를 구현하세요.
+  </p>
+  <pre>class KinematicLateralPID:
+    def __init__(self, kp: float, kd: float, ki: float, dt: float): ...
+
+    def step(self, reference_Y: float, ego_Y: float) -> float
+        """조향각 δ (rad) 를 반환."""</pre>
+  <table>
+    <tr><th>인자</th><th>의미</th></tr>
+    <tr><td><code>reference_Y</code></td><td>목표 Y 위치 [m]</td></tr>
+    <tr><td><code>ego_Y</code></td><td>현재 ego 의 Y 위치 [m]</td></tr>
+    <tr><td><b>반환</b></td><td>조향각 δ [rad] — ego 의 <code>VehicleLat.step()</code> 입력</td></tr>
+  </table>
+  <ul>
+    <li>내부 상태 <code>prev_error</code>, <code>error_sum</code>을 관리합니다.</li>
+    <li><b>첫 호출은 D 항 = 0</b>.</li>
+  </ul>
+
+  <h3>게인·파라미터 튜닝</h3>
+  <p>
+    이 과제에서 구현하는 것은 <b>알고리즘 로직</b> 입니다 — 라이브러리 코드의 시그니처는
+    고정이고 본문(<code># TODO</code>)만 채웁니다. 게인·파라미터의 실제 <b>값</b> 은 코드가
+    아니라 실행 파일에서 정하며, 세 군데의 역할이 다릅니다.
+  </p>
+  <ul>
+    <li><b>라이브러리 코드</b> (구현 대상) — 알고리즘만 구현. 게인·파라미터는 매개변수로 받기만 하고 값은 담지 않음.</li>
+    <li><b>producer</b> (<code>record_gen.py</code> / <code>demo.py</code>) — 게인·파라미터 값을 정하는 곳. <b>release 기본값은 0</b> 이라 그대로 실행하면 응답이 없거나 오류가 납니다 → 직접 값을 채워 실행하며 응답 변화를 비교하세요 (자유롭게 변경 OK).</li>
+    <li><b><code>test_*.py</code></b> — 합격 기준 검증용 값. <b>변경 금지</b>.</li>
+  </ul>
+  <p><b>이 문제에서 바꾸는 줄</b> — <code>record_gen.py</code> 의 아래 줄. release 기본값은 0 이니 여기에 값을 채우세요:</p>
+  <pre>    pid = KinematicLateralPID(kp=0.0, kd=0.0, ki=0.0, dt=dt)</pre>
+
+  <h2><span class="num">4</span>실행 방법</h2>
+  <p>모든 명령은 git 저장소 루트에서 실행합니다.</p>
+
+  <h3>구현 파일</h3>
+  <pre>01_Python_project/release/03_vehicle_control/04_kinematic_lateral/kinematic_lateral_pid.py</pre>
+
+  <h3>테스트 — 합격 기준 검증</h3>
+  <pre>uv run pytest 01_Python_project/release/03_vehicle_control/04_kinematic_lateral/ -v</pre>
+
+  <h3>시나리오 실행 → record JSON 생성 + Rerun viewer 자동 실행</h3>
+  <pre>uv run python 01_Python_project/release/03_vehicle_control/04_kinematic_lateral/record_gen.py</pre>
+  <p>
+    게인은 release 기본값이 <code>0</code>이므로 <code>record_gen.py</code> 안에서 직접 채우세요.
+    JSON만 생성하려면 <code>--no-viewer</code>를 붙입니다.
+  </p>
+
+  <h3>Rerun viewer 재생</h3>
+  <pre>uv run python 01_Python_project/release/03_vehicle_control/simulator_vehicle_control.py 01_Python_project/release/03_vehicle_control/04_kinematic_lateral/</pre>
+
+  <h3>디버그 신호 — 심화 분석 (선택)</h3>
+  <p>
+    <code>record_gen.py</code> 의 <code>dbg.add(...)</code> 블록에는 <code>debug1/2/3</code> 주석
+    placeholder 가 준비돼 있습니다. 주석을 풀고 분석하고 싶은 값·식(예: 추적 오차, 내부 상태)을
+    채우면 그 신호가 record 에 함께 저장됩니다 — 신호 추가·삭제·수정은 이 <code>dbg.add()</code>
+    호출의 kwarg 한 줄로 끝납니다.
+  </p>
+  <p>
+    디버그 신호는 viewer 기본 화면에는 나타나지 않습니다 — Rerun viewer 좌측 entity 패널에서
+    <code>/debug/&lt;이름&gt;</code> 항목을 골라 TimeSeriesView 를 직접 추가하면 시계열로 볼 수 있습니다.
+    구현이 막힐 때 내부 신호를 들여다보는 디버깅 도구로 활용하세요.
+  </p>
+
+  <h2><span class="num">5</span>합격 기준 <span class="tag">pytest</span></h2>
+  <p>알고리즘 형태는 자유 — 동작 명세(behavioral spec)만 검증합니다.</p>
+  <ol class="pass-list">
+    <li><b>Y 추적 오차</b> — <code>vx=3, Y_ref=4, kp=0.2, kd=0.8, ki=0.0</code>, 30초 시뮬,
+      tail 평균 <code>|Y 오차| &lt; 0.2 m</code>, peak <code>|Y 오차| &lt; 4.2 m</code>.</li>
+  </ol>
+
+  <h2><span class="num">6</span>힌트</h2>
+  <ul>
+    <li>조향각 단위는 <b>라디안</b>입니다 — degree 가 아닙니다. 차량 모델이 <code>±0.5 rad</code>로 클리핑합니다.</li>
+    <li>PID 구조는 01_speed_pid 와 동일 — error 가 속도 대신 Y 위치 차이입니다.</li>
+    <li>D 항(<code>kd</code>)이 중요합니다 — 없으면 차량이 목표선을 지나쳐 진동합니다.</li>
+    <li>직선 추종은 PID 가 가장 잘하는 시나리오입니다. 곡선 경로는 이후 모듈에서 다룹니다.</li>
+  </ul>
+
+  <h2><span class="num">7</span>제약</h2>
+  <ul>
+    <li><code>vehicle_lat_kinematic.py</code>, <code>test_kinematic_lateral.py</code> — <b>수정 금지</b> (검증 환경).</li>
+    <li><code>step()</code>의 시그니처 변경 금지.</li>
+    <li>게인 값은 <code>record_gen.py</code>에서 실험 — <code>test_*.py</code>의 값은 변경 금지.</li>
+  </ul>
+
+  <hr>
+  <p class="footer">
+    IVS — Intelligent Vehicle Systems · Chapter 3 Vehicle Control · 04_kinematic_lateral<br>
+    구현 파일: <code>kinematic_lateral_pid.py</code> · 검증: <code>pytest</code> · 시각화: Rerun viewer
+  </p>
+
+</body>
+
+</html>

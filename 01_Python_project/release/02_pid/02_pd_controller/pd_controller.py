@@ -1,6 +1,6 @@
 """PD Controller — proportional + derivative feedback.
 
-과제 명세는 README.md 참조.
+과제 명세는 problem.html 참조.
 """
 from __future__ import annotations
 
@@ -13,14 +13,6 @@ class PDController:
         self.prev_error: float | None = None
 
     def step(self, reference: float, measure: float) -> float:
-        error = reference - measure
-        if self.prev_error is None:
-            d_error = 0.0
-        else:
-            d_error = (error - self.prev_error) / self.dt
-        u = self.kp * error + self.kd * d_error
-        self.prev_error = error
-        return u
         # TODO: PD 제어 식을 구현하시오.
         # 인터페이스: reference (목표), measure (현재) 를 받아 제어 입력 u 를 반환
         # - error = reference - measure  (부호 주의)

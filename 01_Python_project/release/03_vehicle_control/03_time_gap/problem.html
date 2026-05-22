@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>과제 — 종방향 속도 제어 (Constant Time-gap 추종)</title>
+  <style>
+    :root {
+      --ink: #1a2330;
+      --muted: #5b6675;
+      --line: #d9dee6;
+      --accent: #1f6feb;
+      --accent-soft: #e8f0fe;
+      --warn: #b3541e;
+      --warn-soft: #fdf0e6;
+      --ok: #1f7a3d;
+      --code-bg: #f4f6f9;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      line-height: 1.7;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 28px 96px;
+      background: #fff;
+    }
+
+    h1 {
+      font-size: 1.7rem;
+      margin: 0 0 4px;
+      letter-spacing: -0.01em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.98rem;
+      margin-bottom: 28px;
+    }
+
+    h2 {
+      font-size: 1.18rem;
+      margin: 38px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--line);
+    }
+
+    h2 .num {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.82rem;
+      width: 1.55em;
+      height: 1.55em;
+      line-height: 1.55em;
+      text-align: center;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: 1px;
+    }
+
+    h3 {
+      font-size: 1.02rem;
+      margin: 22px 0 6px;
+    }
+
+    p {
+      margin: 8px 0;
+    }
+
+    code {
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .scenario-card {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 1.02rem;
+    }
+
+    .formula {
+      background: #fbfcfe;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 14px 0;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.96rem;
+    }
+
+    .formula .lbl {
+      color: var(--muted);
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 0.94rem;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--code-bg);
+      font-weight: 600;
+    }
+
+    ul,
+    ol {
+      margin: 8px 0;
+      padding-left: 24px;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    .note {
+      background: var(--warn-soft);
+      border-left: 4px solid var(--warn);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 0.94rem;
+    }
+
+    .note b {
+      color: var(--warn);
+    }
+
+    .fig {
+      margin: 22px 0;
+      text-align: center;
+    }
+
+    .fig figcaption {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-top: 8px;
+    }
+
+    .pass-list li {
+      margin: 8px 0;
+    }
+
+    .pass-list b {
+      color: var(--ok);
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-left: 6px;
+      vertical-align: 2px;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 32px 0;
+    }
+
+    .footer {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>종방향 속도 제어 — 전방 차량 Time-gap 추종</h1>
+  <p class="subtitle">Chapter 3 · Vehicle Control / 03_time_gap &nbsp;|&nbsp; 자율주행 ACC(Adaptive Cruise Control) 의 핵심 제어기
+  </p>
+
+  <div class="scenario-card">
+    자율주행 자동차의 <b>종방향 속도 제어</b>를 하려 합니다.
+    전방에 주행 중인 차량을 <b>Constant Time-gap policy</b> 로 추종하도록 제어기를 설계해 보세요.
+  </div>
+
+  <h2><span class="num">1</span>문제 상황</h2>
+  <p>
+    여러분의 차량(<b>ego</b>)은 앞서 달리는 차량(<b>target</b>)을 일정한 <b>시간 간격(time-gap)</b>
+    을 두고 따라가야 합니다. 거리를 고정값으로 두는 것이 아니라 —
+  </p>
+  <ul>
+    <li><b>고속</b>에서는 더 멀리, <b>저속</b>에서는 더 가깝게 — 간격이 ego 속도에 비례합니다.</li>
+    <li>이것이 실제 양산차 ACC 가 쓰는 표준 정책입니다. ("앞차와 2초 거리 유지" 같은 안내가 이것)</li>
+  </ul>
+  <p>
+    제어기는 매 시간 스텝마다 ego 의 <b>가속도 명령</b> <code>u</code> 를 출력하고,
+    ego 차량은 그 명령을 받아 움직입니다. 목표는 target 과의 시간 간격을
+    설정값 <code>time_gap</code>(기본 1.0초) 으로 수렴·유지하는 것입니다.
+  </p>
+
+  <div class="fig">
+    <svg viewBox="0 0 860 250" width="100%" style="max-width:820px" xmlns="http://www.w3.org/2000/svg"
+      aria-label="time-gap following diagram">
+      <!-- road -->
+      <rect x="0" y="150" width="860" height="70" fill="#eef1f5" />
+      <line x1="0" y1="150" x2="860" y2="150" stroke="#c2c9d4" stroke-width="2" />
+      <line x1="0" y1="220" x2="860" y2="220" stroke="#c2c9d4" stroke-width="2" />
+      <!-- lane dashes -->
+      <line x1="0" y1="185" x2="860" y2="185" stroke="#fff" stroke-width="3" stroke-dasharray="26 22" />
+
+      <!-- ego vehicle (left, blue) -->
+      <g>
+        <rect x="150" y="158" width="118" height="34" rx="6" fill="#1f6feb" />
+        <rect x="172" y="146" width="64" height="16" rx="5" fill="#1f6feb" />
+        <circle cx="180" cy="194" r="11" fill="#2a2f3a" />
+        <circle cx="240" cy="194" r="11" fill="#2a2f3a" />
+        <text x="209" y="180" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">EGO</text>
+      </g>
+      <!-- ego velocity arrow -->
+      <line x1="150" y1="128" x2="244" y2="128" stroke="#1f6feb" stroke-width="3" />
+      <polygon points="244,128 234,123 234,133" fill="#1f6feb" />
+      <text x="197" y="118" text-anchor="middle" fill="#1f6feb" font-size="13" font-weight="600">v_ego</text>
+
+      <!-- target vehicle (right, orange) -->
+      <g>
+        <rect x="592" y="158" width="118" height="34" rx="6" fill="#e08a2e" />
+        <rect x="614" y="146" width="64" height="16" rx="5" fill="#e08a2e" />
+        <circle cx="622" cy="194" r="11" fill="#2a2f3a" />
+        <circle cx="682" cy="194" r="11" fill="#2a2f3a" />
+        <text x="651" y="180" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">TARGET</text>
+      </g>
+      <!-- target velocity arrow -->
+      <line x1="592" y1="128" x2="700" y2="128" stroke="#e08a2e" stroke-width="3" />
+      <polygon points="700,128 690,123 690,133" fill="#e08a2e" />
+      <text x="646" y="118" text-anchor="middle" fill="#e08a2e" font-size="13" font-weight="600">v_target</text>
+
+      <!-- desired gap label -->
+      <rect x="338" y="160" width="184" height="30" rx="15" fill="#fff" stroke="#1f6feb" stroke-width="1.5" />
+      <text x="430" y="180" text-anchor="middle" fill="#1f6feb" font-size="13" font-weight="600">
+        목표 간격 = v_ego · time_gap
+      </text>
+    </svg>
+    <figcaption>그림 1. ego 가 target 을 time-gap 정책으로 추종 — 목표 간격이 ego 속도에 비례한다.</figcaption>
+  </div>
+
+
+  <h2><span class="num">2</span>플랜트 모델</h2>
+  <p>
+    ego·target 차량은 <code>vehicle_long_tg.py</code> 의 <code>VehicleLong</code> 종방향 점질량 모델입니다.
+    매 스텝 dynamics:
+  </p>
+  <pre>x   ← x  + dt·vx + 0.5·dt²·ax
+vx  ← vx + dt·ax
+ax  ← clip( u − C·vx² − g·sinθ ,  −ax_limit, +ax_limit )</pre>
+  <ul>
+    <li><b>target</b>: drag 없음(<code>Ca=0</code>). 가속도는 시나리오가 외부에서 지정.</li>
+    <li><b>ego</b>: drag 포함(<code>Ca=0.5</code>). 가속도 명령 = 여러분 제어기의 출력 <code>u</code>.</li>
+    <li><code>ax_limit = ±2 m/s²</code> — 명령이 크더라도 실제 가속도는 포화됩니다.</li>
+  </ul>
+
+  <h2><span class="num">3</span>구현 과제</h2>
+  <p>
+    <code>time_gap_pid.py</code> 의 <code>TimeGapPID.step()</code> 메소드를 구현하세요.
+    클래스 골격과 시그니처는 이미 주어져 있습니다.
+  </p>
+  <pre>class TimeGapPID:
+    def __init__(self, kp: float, kd: float, ki: float, dt: float,
+                 time_gap: float = 1.0): ...
+
+    def step(self, target_x: float, ego_x: float, ego_vx: float) -> float
+        """한 스텝의 가속도 명령 u 를 반환."""</pre>
+  <table>
+    <tr>
+      <th>인자</th>
+      <th>의미</th>
+    </tr>
+    <tr>
+      <td><code>target_x</code></td>
+      <td>target 차량의 현재 위치 [m]</td>
+    </tr>
+    <tr>
+      <td><code>ego_x</code></td>
+      <td>ego 차량의 현재 위치 [m]</td>
+    </tr>
+    <tr>
+      <td><code>ego_vx</code></td>
+      <td>ego 차량의 현재 속도 [m/s] — <code>target_space</code> 계산에 필요</td>
+    </tr>
+    <tr>
+      <td><b>반환</b></td>
+      <td>가속도 명령 <code>u</code> — ego 의 <code>VehicleLong.step()</code> 입력</td>
+    </tr>
+  </table>
+  <ul>
+    <li>내부 상태로 <code>prev_error</code>, <code>error_sum</code> 을 관리합니다 (PID 표준).</li>
+    <li><b>첫 호출은 D 항 = 0</b> — 직전 오차가 없으므로 미분 항을 계산할 수 없습니다.</li>
+  </ul>
+
+  <h3>게인·파라미터 튜닝</h3>
+  <p>
+    이 과제에서 구현하는 것은 <b>알고리즘 로직</b> 입니다 — 라이브러리 코드의 시그니처는
+    고정이고 본문(<code># TODO</code>)만 채웁니다. 게인·파라미터의 실제 <b>값</b> 은 코드가
+    아니라 실행 파일에서 정하며, 세 군데의 역할이 다릅니다.
+  </p>
+  <ul>
+    <li><b>라이브러리 코드</b> (구현 대상) — 알고리즘만 구현. 게인·파라미터는 매개변수로 받기만 하고 값은 담지 않음.</li>
+    <li><b>producer</b> (<code>record_gen.py</code> / <code>demo.py</code>) — 게인·파라미터 값을 정하는 곳. <b>release 기본값은 0</b> 이라 그대로 실행하면 응답이 없거나 오류가 납니다 → 직접 값을 채워 실행하며 응답 변화를 비교하세요 (자유롭게 변경 OK).</li>
+    <li><b><code>test_*.py</code></b> — 합격 기준 검증용 값. <b>변경 금지</b>.</li>
+  </ul>
+  <p><b>이 문제에서 바꾸는 줄</b> — 아래 파일들의 해당 줄. release 기본값은 0 이니 여기에 값을 채우세요:</p>
+  <pre>record_gen_stationary.py
+    pid = TimeGapPID(kp=0.0, kd=0.0, ki=0.0, dt=dt, time_gap=time_gap)
+record_gen_maneuvering.py
+    pid = TimeGapPID(kp=0.0, kd=0.0, ki=0.0, dt=dt, time_gap=time_gap)</pre>
+
+  <h2><span class="num">4</span>검증 시나리오 — 같은 게인이 둘 다 통과해야 함</h2>
+  <p>동일한 제어기·동일한 게인으로 두 시나리오를 모두 만족해야 합니다.</p>
+  <h3>① 정속 target <span class="tag">record_gen_stationary.py</span></h3>
+  <p>target 이 일정 속도로 주행. ego 가 1.0초 간격으로 안정 수렴하는지 확인.</p>
+  <h3>② 기동 target <span class="tag">record_gen_maneuvering.py</span></h3>
+  <p>target 이 가속·감속을 반복(<code>0 → +1.5 → −1.5 → 0 m/s²</code>). 충돌 없이 추종하고,
+    정속 복귀 후 다시 1.0초 간격으로 재수렴하는지 확인.</p>
+  <div class="note">
+    <b>주의:</b> 한쪽 시나리오만 통과하는 게인은 합격이 아닙니다. 정속에 맞춰 과하게
+    키운 게인은 기동 시나리오에서 진동·추월(충돌)을 일으킵니다.
+  </div>
+
+  <h2><span class="num">5</span>실행 방법</h2>
+  <p>모든 명령은 git 저장소 루트에서 실행합니다.</p>
+
+  <h3>구현 파일</h3>
+  <pre>01_Python_project/release/03_vehicle_control/03_time_gap/time_gap_pid.py</pre>
+
+  <h3>테스트 — 합격 기준 검증</h3>
+  <pre>uv run pytest 01_Python_project/release/03_vehicle_control/03_time_gap/ -v</pre>
+
+  <h3>시나리오 실행 → record JSON 생성 + Rerun viewer 자동 실행</h3>
+  <pre>uv run python 01_Python_project/release/03_vehicle_control/03_time_gap/record_gen_stationary.py
+uv run python 01_Python_project/release/03_vehicle_control/03_time_gap/record_gen_maneuvering.py</pre>
+  <p>
+    게인(<code>kp, kd, ki</code>)은 release 기본값이 <code>0</code> 이라 그대로 실행하면 응답이 나오지
+    않습니다 — <code>record_gen_*.py</code> 안의 게인을 직접 채워 다시 실행하며 응답 변화를 비교하세요.
+    JSON 만 만들고 viewer 를 띄우지 않으려면 명령 끝에 <code>--no-viewer</code> 를 붙입니다.
+  </p>
+
+  <h3>두 시나리오를 한 viewer 에서 비교</h3>
+  <pre>uv run python 01_Python_project/release/03_vehicle_control/simulator_vehicle_control.py 01_Python_project/release/03_vehicle_control/03_time_gap/</pre>
+  <p>viewer 좌측 Recordings 패널에서 정지/기동 시나리오를 클릭으로 전환할 수 있습니다.</p>
+
+  <h3>디버그 신호 — 심화 분석 (선택)</h3>
+  <p>
+    <code>record_gen.py</code> 의 <code>dbg.add(...)</code> 블록에는 <code>debug1/2/3</code> 주석
+    placeholder 가 준비돼 있습니다. 주석을 풀고 분석하고 싶은 값·식(예: 추적 오차, 내부 상태)을
+    채우면 그 신호가 record 에 함께 저장됩니다 — 신호 추가·삭제·수정은 이 <code>dbg.add()</code>
+    호출의 kwarg 한 줄로 끝납니다.
+  </p>
+  <p>
+    디버그 신호는 viewer 기본 화면에는 나타나지 않습니다 — Rerun viewer 좌측 entity 패널에서
+    <code>/debug/&lt;이름&gt;</code> 항목을 골라 TimeSeriesView 를 직접 추가하면 시계열로 볼 수 있습니다.
+    구현이 막힐 때 내부 신호를 들여다보는 디버깅 도구로 활용하세요.
+  </p>
+
+  <h2><span class="num">6</span>합격 기준 <span class="tag">pytest</span></h2>
+  <p>알고리즘 형태는 자유 — 동작 명세(behavioral spec)만 검증합니다. 검증 명령은 5절 참조.</p>
+  <ol class="pass-list">
+    <li><b>time-gap 식 정확도</b> — <code>step()</code> 가 <code>(x_target − x_ego) − v_ego·time_gap</code> 오차에 기반한 PID 출력을
+      내는지.</li>
+    <li><b>첫 호출 D=0</b> — 직전 오차가 없을 때 미분 항을 0 으로 처리.</li>
+    <li><b>정속 target 수렴</b> — 50초 시뮬 후 시간 간격이 1.0초 근방(±0.2초).</li>
+    <li><b>기동 target 안전 + 재수렴</b> — 80초 시뮬 동안 충돌 없음(간격 &gt; 0), 정속 복귀 후 ±0.5초 안으로 재수렴.</li>
+  </ol>
+
+  <h2><span class="num">7</span>힌트</h2>
+  <ul>
+    <li><code>target_space = ego_vx · time_gap</code> 을 <b>매 <code>step()</code> 호출 시 다시</b> 계산하세요. 생성자에서 한 번만 계산하면 가속
+      구간에서 오작동합니다.</li>
+    <li>기동 시나리오는 정속보다 진동·overshoot 위험이 큽니다 → <b>D 항이 중요</b>합니다.</li>
+    <li>오차 부호를 점검하세요 — <code>(reference − measure)</code> 순서. 부호가 뒤집히면 ego 가 target 으로 돌진합니다.</li>
+    <li>초기 조건은 <b>ACC 인계 시점</b> — ego 와 target 이 이미 같은 속도, 이미 정상 간격
+      (<code>gap₀ = v_ego·time_gap</code>) 에서 출발합니다. 큰 간격을 좁히는 cold start 는 범위 밖.</li>
+  </ul>
+
+  <h2><span class="num">8</span>제약</h2>
+  <ul>
+    <li><code>vehicle_long_tg.py</code>, <code>test_time_gap.py</code> — <b>수정 금지</b> (검증 환경).</li>
+    <li><code>step()</code> 의 시그니처 변경 금지.</li>
+    <li>게인 값(<code>kp, kd, ki</code>) 은 <code>record_gen_*.py</code> 에서 실험 — release 기본값은 0 으로
+      초기화되어 있으니 직접 채워 응답을 확인하세요. <code>test_*.py</code> 의 값은 변경 금지.</li>
+  </ul>
+
+  <hr>
+  <p class="footer">
+    IVS — Intelligent Vehicle Systems · Chapter 3 Vehicle Control · 03_time_gap<br>
+    구현 파일: <code>time_gap_pid.py</code> · 검증: <code>pytest</code> · 시각화: Rerun viewer
+  </p>
+
+</body>
+
+</html>

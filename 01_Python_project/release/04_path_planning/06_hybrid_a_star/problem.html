@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>과제 — Hybrid A* kinematic 경로 탐색</title>
+  <style>
+    :root {
+      --ink: #1a2330;
+      --muted: #5b6675;
+      --line: #d9dee6;
+      --accent: #1f6feb;
+      --accent-soft: #e8f0fe;
+      --warn: #b3541e;
+      --warn-soft: #fdf0e6;
+      --ok: #1f7a3d;
+      --code-bg: #f4f6f9;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      line-height: 1.7;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 28px 96px;
+      background: #fff;
+    }
+
+    h1 {
+      font-size: 1.7rem;
+      margin: 0 0 4px;
+      letter-spacing: -0.01em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.98rem;
+      margin-bottom: 28px;
+    }
+
+    h2 {
+      font-size: 1.18rem;
+      margin: 38px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--line);
+    }
+
+    h2 .num {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.82rem;
+      width: 1.55em;
+      height: 1.55em;
+      line-height: 1.55em;
+      text-align: center;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: 1px;
+    }
+
+    h3 {
+      font-size: 1.02rem;
+      margin: 22px 0 6px;
+    }
+
+    p {
+      margin: 8px 0;
+    }
+
+    code {
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .scenario-card {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 1.02rem;
+    }
+
+    .formula {
+      background: #fbfcfe;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 14px 0;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.96rem;
+    }
+
+    .formula .lbl {
+      color: var(--muted);
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 0.94rem;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--code-bg);
+      font-weight: 600;
+    }
+
+    ul,
+    ol {
+      margin: 8px 0;
+      padding-left: 24px;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    .note {
+      background: var(--warn-soft);
+      border-left: 4px solid var(--warn);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 0.94rem;
+    }
+
+    .note b {
+      color: var(--warn);
+    }
+
+    .fig {
+      margin: 22px 0;
+      text-align: center;
+    }
+
+    .fig figcaption {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-top: 8px;
+    }
+
+    .pass-list li {
+      margin: 8px 0;
+    }
+
+    .pass-list b {
+      color: var(--ok);
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-left: 6px;
+      vertical-align: 2px;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 32px 0;
+    }
+
+    .footer {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Hybrid A* — kinematic 경로 탐색 + Pure Pursuit 추종</h1>
+  <p class="subtitle">Chapter 4 · Path Planning / 06_hybrid_a_star &nbsp;|&nbsp; 차량이 실제로 달릴 수 있는 경로를 탐색</p>
+
+  <div class="scenario-card">
+    <b>Hybrid A*</b> 로 kinematic 차량의 연속 상태 <code>(x, y, yaw)</code> 공간에서 경로를 탐색하고,
+    결과 path 를 Chapter 3 의 <code>PurePursuit</code> 으로 따라가 보세요.
+  </div>
+
+  <h2><span class="num">1</span>문제 상황</h2>
+  <p>
+    A*(05)가 찾은 격자 경로는 대각선·직각으로 꺾입니다 — 사람이 걷는 길이지 <b>차가 달릴 수 있는
+    길</b>이 아닙니다. Hybrid A* 는 노드를 격자 칸이 아니라 <b>차량 운동학으로 도달 가능한 pose</b>
+    로 확장하므로, 결과 경로가 곧바로 주행 가능한 곡선이 됩니다.
+  </p>
+  <table>
+    <tr><th></th><th>A* (05)</th><th>Hybrid A* (06)</th></tr>
+    <tr><td>상태</td><td><code>(x, y)</code> 격자</td><td><code>(x, y, yaw)</code> 연속</td></tr>
+    <tr><td>action</td><td>8-connected 이산 이동</td><td>motion primitives (원호 5종)</td></tr>
+    <tr><td>충돌 검사</td><td>한 점</td><td>action sweep arc vs 원형 장애물</td></tr>
+    <tr><td>노드 동등성</td><td>좌표 일치</td><td>discretized bucket key (위치 + yaw 양자화)</td></tr>
+  </table>
+
+  <div class="fig">
+    <svg viewBox="0 0 300 300" width="100%" style="max-width:330px" xmlns="http://www.w3.org/2000/svg"
+      aria-label="hybrid a-star space diagram">
+      <rect x="0" y="0" width="300" height="300" fill="#f4f6f9" />
+      <rect x="0" y="0" width="300" height="300" fill="none" stroke="#c2c9d4" stroke-width="2" />
+      <!-- L-shape obstacles (radius-1 circles) -->
+      <g fill="#9aa3af" opacity="0.55">
+        <circle cx="80" cy="188" r="16" />
+        <circle cx="80" cy="172" r="16" />
+        <circle cx="80" cy="156" r="16" />
+        <circle cx="80" cy="140" r="16" />
+        <circle cx="80" cy="124" r="16" />
+        <circle cx="80" cy="108" r="16" />
+        <circle cx="112" cy="188" r="16" />
+        <circle cx="144" cy="188" r="16" />
+        <circle cx="176" cy="188" r="16" />
+        <circle cx="208" cy="188" r="16" />
+        <circle cx="240" cy="188" r="16" />
+      </g>
+      <!-- search path (curved, around the L) -->
+      <path d="M192,268 Q70,250 56,150 Q50,90 192,108" fill="none" stroke="#d6539e" stroke-width="3" />
+      <!-- start pose (10,0,pi) facing left -->
+      <circle cx="192" cy="268" r="7" fill="#1f6feb" />
+      <line x1="192" y1="268" x2="168" y2="268" stroke="#1f6feb" stroke-width="3" />
+      <polygon points="168,268 178,263 178,273" fill="#1f6feb" />
+      <text x="210" y="272" fill="#1f6feb" font-size="11" font-weight="700">START</text>
+      <!-- goal pose (10,10,0) facing right -->
+      <circle cx="192" cy="108" r="7" fill="#d6453d" />
+      <line x1="192" y1="108" x2="216" y2="108" stroke="#d6453d" stroke-width="3" />
+      <polygon points="216,108 206,103 206,113" fill="#d6453d" />
+      <text x="208" y="100" fill="#d6453d" font-size="11" font-weight="700">GOAL</text>
+    </svg>
+    <figcaption>그림 1. L-shape 장애물(원형) 사이를 운동학적으로 우회하는 path. start·goal 은 위치 + 방향(yaw)을 함께 가진다.</figcaption>
+  </div>
+
+  <h2><span class="num">2</span>Map 구조 <span class="tag">map_3</span></h2>
+  <ul>
+    <li>탐색 공간: <code>x ∈ [-2, 15]</code>, <code>y ∈ [-2, 15]</code>.</li>
+    <li>start <code>(10, 0, π)</code> — 좌측을 바라봄. goal <code>(10, 10, 0)</code> — 우측을 바라봄.</li>
+    <li>장애물: 반지름 1 의 원형 17개 — vertical wall(<code>x=3, y=5..10</code>) + horizontal wall
+      (<code>x=4..14, y=5</code>)이 L-shape 를 이룹니다. 좌측 위로 우회해야 합니다.</li>
+  </ul>
+
+  <h2><span class="num">3</span>구현 도구 — <code>vehicle_kinematics.py</code></h2>
+  <p>
+    Hybrid A* 구현에 필요한 helper 가 <code>vehicle_kinematics.py</code> 에 <b>모두 들어 있습니다</b>.
+    직접 만들지 말고 반드시 import 해서 호출하세요 — search 알고리즘 자체에만 집중하도록 분리해 둔
+    것입니다. 각 함수의 상세 설명은 그 파일의 docstring 을 참조하세요.
+  </p>
+  <table>
+    <tr><th>함수</th><th>역할</th></tr>
+    <tr><td><code>motion_primitives(R, vx, dt)</code></td><td>5가지 action <code>(yaw_rate, dt, cost)</code> 생성</td></tr>
+    <tr><td><code>vehicle_move(pose, yaw_rate, dt, vx)</code></td><td>kinematic 한 스텝(직선/원호) 이동</td></tr>
+    <tr><td><code>in_space(pose, space)</code></td><td>탐색 공간 안인지 검사</td></tr>
+    <tr><td><code>arc_collision(pose, yaw_rate, dt, vx, obstacles, vehicle_radius=...)</code></td><td>sweep arc 충돌 검사 (Minkowski-inflation 지원)</td></tr>
+    <tr><td><code>discretize_pose(pose)</code></td><td>연속 pose → 정수 bucket key</td></tr>
+    <tr><td><code>euclid_xy(a, b)</code></td><td>2D Euclidean 거리</td></tr>
+  </table>
+  <div class="note">
+    <b>주의:</b> <code>vehicle_kinematics.py</code> 는 검증 환경의 일부 — <b>수정 금지</b>. 함수를 직접 다시 구현하지 마세요.
+  </div>
+
+  <h2><span class="num">4</span>구현 과제</h2>
+  <p>
+    <code>hybrid_a_star.py</code> 의 <code>hybrid_a_star()</code> 함수 본문(<code># TODO</code>)을 구현하세요.
+    시그니처는 이미 주어져 있습니다.
+  </p>
+  <pre>def hybrid_a_star(
+    start: tuple[float, float, float],
+    goal: tuple[float, float, float],
+    space: tuple[float, float, float, float],
+    obstacles: list[tuple[float, float, float]],
+    R: float = 5.0, vx: float = 2.0, dt: float = 0.5,
+    weight: float = 1.1, epsilon_goal: float = 0.6,
+    vehicle_radius: float = 1.7,
+    on_step: Callable[[pose, pose | None, set[key], float, float], None] | None = None,
+) -> list[tuple[float, float, float]]</pre>
+  <table>
+    <tr><th>인자</th><th>의미</th></tr>
+    <tr><td><code>space</code></td><td><code>(x_min, x_max, y_min, y_max)</code> 탐색 공간.</td></tr>
+    <tr><td><code>obstacles</code></td><td><code>(x, y, radius)</code> 튜플 리스트 — 원형 충돌.</td></tr>
+    <tr><td><code>vehicle_radius</code></td><td>차량 effective 반경 + 안전계수. <code>arc_collision</code> 에서 장애물 반경에 Minkowski-inflation 으로 더해짐.</td></tr>
+    <tr><td><code>on_step</code></td><td>매 expand 직후 호출 — <code>(current_pose, parent_pose_or_None, open_set, g_cost, f_cost)</code>. start expand 시 parent 는 None. <code>open_set</code> 은 그 시점의 open list, <code>g_cost</code> 는 누적 비용, <code>f_cost = g + weight·h</code>.</td></tr>
+    <tr><td><b>반환</b></td><td>pose list(start → goal). 미발견 시 <code>[]</code>.</td></tr>
+  </table>
+
+  <h3>게인·파라미터 튜닝</h3>
+  <p>
+    이 과제에서 구현하는 것은 <b>알고리즘 로직</b> 입니다 — 함수는 시그니처가 고정이고 본문만 채웁니다.
+    탐색 동작을 좌우하는 파라미터(<code>R</code>, <code>vx</code>, <code>dt</code>, <code>weight</code>)는
+    <code>record_gen.py</code> 의 module-level 상수로 정의돼 있어, 값을 바꿔 다시 실행하면 search 결과·속도가
+    달라지는 것을 viewer 에서 비교할 수 있습니다 (자유롭게 변경 OK). <b>합격 기준 검증용 값은
+    <code>test_*.py</code> 에 있으며 변경 금지</b> 입니다.
+  </p>
+
+  <h2><span class="num">5</span>실행 방법</h2>
+  <p>모든 명령은 git 저장소 루트에서 실행합니다.</p>
+
+  <h3>구현 파일</h3>
+  <pre>01_Python_project/release/04_path_planning/06_hybrid_a_star/hybrid_a_star.py</pre>
+
+  <h3>테스트 — 합격 기준 검증</h3>
+  <pre>uv run pytest 01_Python_project/release/04_path_planning/06_hybrid_a_star/ -v</pre>
+
+  <h3>시나리오 실행 → record JSON 생성 + Rerun viewer 자동 실행</h3>
+  <p><b>기본 모드 — search phase 만 (알고리즘 디버깅용):</b></p>
+  <pre>uv run python 01_Python_project/release/04_path_planning/06_hybrid_a_star/record_gen.py</pre>
+  <p>
+    2D viewer 에 탐색 공간 + 원형 장애물 + start(파랑) + goal(빨강)이 표시되고, 하단
+    <code>iteration</code> 타임라인 scrubber 로 expansion arc 가 트리처럼 자라는 과정을
+    재생합니다. 04·05 와 같은 <code>simulator_search.py</code> 뷰어라 디버그 신호도 같은
+    expansion 축에서 분석할 수 있습니다.
+  </p>
+  <p><b><code>--controller</code> 모드 — 추종까지 (최종 비주얼라이즈용):</b></p>
+  <pre>uv run python 01_Python_project/release/04_path_planning/06_hybrid_a_star/record_gen.py --controller</pre>
+  <p>3D viewer 에 반투명 회색 원기둥(장애물) + 지면 경계선 + ego 차량 + 빨간 goal marker 가 표시됩니다. timeline <code>sim_time</code> scrubber 로:</p>
+  <ul>
+    <li><b>t = 0 ~ T_search</b> — ego 는 START 에 정지. 회색 search arc 들이 batch 단위로 트리처럼 자라납니다. 우측 텍스트 패널에 closed / open / current pose.</li>
+    <li><b>t = T_search</b> — 핑크 곡선(최종 path) 등장.</li>
+    <li><b>t &gt; T_search</b> — ego 가 Pure Pursuit 으로 path 를 매끄럽게 따라가 goal 에 도착.</li>
+  </ul>
+  <p>두 모드 공통: JSON 만 만들려면 <code>--no-viewer</code>, search arc batch 를 묶으려면 <code>--skip N</code>(기본 20).</p>
+
+  <h3>Rerun viewer 재생</h3>
+  <pre>uv run python 01_Python_project/release/04_path_planning/simulator_search.py 01_Python_project/release/04_path_planning/06_hybrid_a_star/</pre>
+  <p>
+    위는 기본(search) record 용입니다. <code>--controller</code> 로 만든 record 는
+    <code>simulator_path_planning.py</code> 로 재생하세요.
+  </p>
+
+  <h3>디버그 신호 — expansion 별 분석 (선택)</h3>
+  <p>
+    <code>record_gen.py</code> 의 <code>on_step</code> 콜백은 <b>매 노드 확장(expansion)</b>마다
+    호출됩니다 — 거기서 <code>goal_dist</code>(현재 pose→goal 거리)·<code>open_size</code>
+    (open list 크기)·<code>g_cost</code>(시작→current 누적 비용)·<code>h_cost</code>(heuristic
+    항 <code>weight·h</code>)·<code>f_cost</code>(총 비용 <code>g + weight·h</code>)를 record 의
+    <code>debug_scalars</code> 로 저장합니다. 더 분석할 값은 <code>dbg.add(...)</code> 의
+    kwarg 한 줄로 추가할 수 있습니다.
+  </p>
+  <p>
+    디버그 신호는 viewer 기본 화면에는 없습니다 — 좌측 entity 패널에서 <code>/debug/&lt;이름&gt;</code> 을
+    골라 TimeSeriesView 를 추가하면 됩니다. <b>기본 모드</b>는 하단 타임라인이
+    <code>iteration</code>(expansion 단위)이라 디버그 곡선이 곧바로 expansion 축으로
+    보입니다(04·05 와 동일). <b><code>--controller</code> 모드</b>는 재생 타임라인이
+    연속 <code>sim_time</code> 이라, 디버그 곡선의 x축(expansion 인덱스 0, 1, 2, …)이
+    재생축과는 별개입니다.
+  </p>
+
+  <h2><span class="num">6</span>합격 기준 <span class="tag">pytest</span></h2>
+  <p>알고리즘 형태는 자유 — 동작 명세(behavioral spec)만 검증합니다.</p>
+  <ol class="pass-list">
+    <li><b>goal 도달</b> — path 의 마지막 pose 가 goal 에서 <code>epsilon_goal=0.6</code> 이내.</li>
+    <li><b>start 일치</b> — <code>path[0]</code> 가 start 와 0.3 m 이내.</li>
+    <li><b>장애물 회피</b> — 모든 path pose 가 effective 반경(<code>orad + vehicle_radius</code>, 기본 1.7 m) 밖.</li>
+    <li><b>kinematic 일관성</b> — 연속 pose 간 거리 ≤ <code>vx·dt·1.05</code>(motion primitive 이동 거리).</li>
+    <li><b>on_step 콜백 호출</b> — 호출 수 ≥ path 길이, 첫 호출 pose ≈ start, 첫 호출 parent_pose 는 None.</li>
+  </ol>
+
+  <h2><span class="num">7</span>힌트</h2>
+  <ul>
+    <li><b>자료 구조</b> — open/closed dict 의 key 는 좌표가 아니라 <code>discretize_pose(pose)</code> 가 만든
+      <b>양자화된 bucket key</b> 입니다. 연속 pose 라서 같은 위치를 정수로 묶어야 중복 확장을 막을 수 있습니다.</li>
+    <li><b>핵심 루프는 A*(05)와 같은 구조</b> 입니다 — open 에서 <code>f</code> 최소 노드를 골라 closed 로 옮기고,
+      <code>on_step</code> 을 호출한 뒤, goal 도달이면 부모 체인으로 path 복원, 아니면 이웃을 확장. 다른 점은
+      이웃이 8방향 격자 이동이 아니라 <code>motion_primitives</code> 5개 원호라는 것뿐입니다.</li>
+    <li><b>이웃 확장</b> — 각 motion primitive 에 대해 <code>vehicle_move</code> 로 child pose 를 계산하고,
+      <code>in_space</code> + <code>arc_collision(..., vehicle_radius=vehicle_radius)</code> 로 안전성을 검사합니다.</li>
+    <li><code>on_step</code> 의 parent_pose 는 <code>closed</code> 에 저장해 둔 부모 pose 입니다 — start 노드는 부모가 없으므로 None.</li>
+  </ul>
+
+  <h2><span class="num">8</span>제약</h2>
+  <ul>
+    <li><code>map_hybrid.py</code>, <code>vehicle_kinematics.py</code>, <code>record_gen.py</code>,
+      <code>test_hybrid_a_star.py</code> — <b>수정 금지</b> (검증 환경).</li>
+    <li>Chapter 3 의 <code>pure_pursuit.py</code> 는 <code>sys.path</code> import 만 — 수정 금지.</li>
+    <li><code>hybrid_a_star()</code> 의 시그니처 변경 금지. <code>test_*.py</code> 의 값은 변경 금지.</li>
+    <li>알고리즘은 <b>순수 Python</b> 으로 구현 — numpy/scipy 의 path-finder 라이브러리 사용 금지.</li>
+  </ul>
+
+  <hr>
+  <p class="footer">
+    IVS — Intelligent Vehicle Systems · Chapter 4 Path Planning · 06_hybrid_a_star<br>
+    구현 파일: <code>hybrid_a_star.py</code> · 검증: <code>pytest</code> · 시각화: Rerun 3D viewer
+  </p>
+
+</body>
+
+</html>

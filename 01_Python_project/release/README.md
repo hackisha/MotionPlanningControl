@@ -47,19 +47,19 @@ uv sync
 
 **테스트 (합격 검증)** — 합격 기준은 이 명령으로:
 ```bash
-uv run pytest 01_Python_project_refactored/release/<area>/<problem>/ -v
+uv run pytest 01_Python_project/release/<area>/<problem>/ -v
 ```
 테스트가 전부 통과 (`PASS`) 하면 합격.
 
 **데모 (시각 확인, 선택)** — 테스트 통과 후 "내가 짠 필터/제어기가 실제로 어떻게 움직이는지" 눈으로 확인하고 싶을 때:
 ```bash
-uv run python 01_Python_project_refactored/release/<area>/<problem>/demo.py
+uv run python 01_Python_project/release/<area>/<problem>/demo.py
 ```
 → 기본 브라우저 새 탭에 plotly 인터랙티브 그래프 (확대·팬·호버 가능). `# TODO` 구현 전에 실행하면 `NotImplementedError`.
 
 **비교 데모 (선택, 01_filters/01-04 모두 완료 후)**:
 ```bash
-uv run python 01_Python_project_refactored/release/01_filters/comparison_demo.py
+uv run python 01_Python_project/release/01_filters/comparison_demo.py
 ```
 → Average / Moving Average / Low-Pass / Kalman 4 개 필터를 같은 신호에 동시 적용한 결과 한 그래프 비교.
 

@@ -6,7 +6,7 @@ target invasion 감지 시 timegap mode 로 전환 — 앞차와 일정 time-gap
 dispatch 는 ControlPipeline 이 mode 보고 speed_step / timegap_step 을 직접 호출.
 timegap_step 의 `gap` 은 ego heading 방향 종방향 projection (곡선 도로에서도 안전한 정의).
 
-과제 명세는 README.md 참조.
+과제 명세는 problem.html 참조.
 """
 from __future__ import annotations
 

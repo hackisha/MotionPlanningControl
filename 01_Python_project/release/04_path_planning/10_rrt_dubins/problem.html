@@ -377,13 +377,13 @@
   <p>모든 명령은 git 저장소 루트에서 실행합니다.</p>
 
   <h3>구현 파일</h3>
-  <pre>01_Python_project_refactored/release/04_path_planning/10_rrt_dubins/rrt_dubins.py</pre>
+  <pre>01_Python_project/release/04_path_planning/10_rrt_dubins/rrt_dubins.py</pre>
 
   <h3>테스트 — 합격 기준 검증</h3>
-  <pre>uv run pytest 01_Python_project_refactored/release/04_path_planning/10_rrt_dubins/ -v</pre>
+  <pre>uv run pytest 01_Python_project/release/04_path_planning/10_rrt_dubins/ -v</pre>
 
   <h3>시나리오 실행 → record JSON 생성 + Rerun viewer 자동 실행</h3>
-  <pre>uv run python 01_Python_project_refactored/release/04_path_planning/10_rrt_dubins/record_gen.py</pre>
+  <pre>uv run python 01_Python_project/release/04_path_planning/10_rrt_dubins/record_gen.py</pre>
   <p>
     2D viewer 에 격자 + 슬라럼 장애물 + start/goal pose 가 표시되고, timeline scrubber 로 트리
     성장을 재생합니다 — 하나의 트리가 계속 이어 자라며, edge 가 직선이 아닌 부드러운 Dubins
@@ -404,7 +404,7 @@
   </ul>
 
   <h3>Rerun viewer 재생 (search 전용 simulator)</h3>
-  <pre>uv run python 01_Python_project_refactored/release/04_path_planning/simulator_search.py</pre>
+  <pre>uv run python 01_Python_project/release/04_path_planning/simulator_search.py</pre>
   <p>인자 없이 실행하면 <code>04_path_planning/</code> 하위의 모든 search record 를 한 viewer 에 멀티 로드 —
     A* / RRT / RRT* / Informed RRT* / Informed RRT* + Dubins 를 한 화면에서 비교할 수 있습니다.</p>
 

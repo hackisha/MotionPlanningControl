@@ -480,15 +480,15 @@
   <p>모든 명령은 git 저장소 루트에서 실행합니다.</p>
 
   <h3>구현 파일</h3>
-  <pre>01_Python_project_refactored/release/05_trajectory_planning/02_frenet_moving_target/frenet_planner.py</pre>
+  <pre>01_Python_project/release/05_trajectory_planning/02_frenet_moving_target/frenet_planner.py</pre>
 
   <h3>테스트 — 합격 기준 검증</h3>
-  <pre>uv run pytest 01_Python_project_refactored/release/05_trajectory_planning/02_frenet_moving_target/ -v</pre>
+  <pre>uv run pytest 01_Python_project/release/05_trajectory_planning/02_frenet_moving_target/ -v</pre>
 
   <h3>시나리오 실행 → record JSON 생성 + Rerun viewer 자동 실행</h3>
   <p>두 시나리오를 각각 실행합니다 — 각 명령이 자신의 record JSON 을 만들고 viewer 를 띄웁니다.</p>
-  <pre>uv run python 01_Python_project_refactored/release/05_trajectory_planning/02_frenet_moving_target/record_gen_lanekeep.py
-uv run python 01_Python_project_refactored/release/05_trajectory_planning/02_frenet_moving_target/record_gen_lanechange.py</pre>
+  <pre>uv run python 01_Python_project/release/05_trajectory_planning/02_frenet_moving_target/record_gen_lanekeep.py
+uv run python 01_Python_project/release/05_trajectory_planning/02_frenet_moving_target/record_gen_lanechange.py</pre>
   <p>
     JSON 만 만들고 viewer 를 띄우지 않으려면 명령 끝에 <code>--no-viewer</code> 를 붙입니다.
     구현 전이면 <code>NotImplementedError</code> 가 나므로 먼저 <code># TODO</code> 를
@@ -496,7 +496,7 @@ uv run python 01_Python_project_refactored/release/05_trajectory_planning/02_fre
   </p>
 
   <h3>record 를 viewer 로 재생 (두 record 한꺼번에)</h3>
-  <pre>uv run python 01_Python_project_refactored/release/05_trajectory_planning/simulator_trajectory_planning.py 01_Python_project_refactored/release/05_trajectory_planning/02_frenet_moving_target/</pre>
+  <pre>uv run python 01_Python_project/release/05_trajectory_planning/simulator_trajectory_planning.py 01_Python_project/release/05_trajectory_planning/02_frenet_moving_target/</pre>
   <p>
     폴더 인자로 호출하면 폴더 하위의 <code>record_*.json</code> 두 개를 viewer 좌측
     Recordings 패널에 모두 로드합니다 — 패널에서 클릭으로 lanekeep ↔ lanechange 전환.

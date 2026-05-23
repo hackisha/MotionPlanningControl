@@ -1,11 +1,17 @@
-"""Frenet Moving Target 시나리오 실행 → record.json 생성.
+"""Frenet Moving Target — 차선 유지(lane-keep) 시나리오 → record_lanekeep.json.
 
 폐루프 트랙 위에서 ego 가 매 스텝 Frenet 최적 궤적 계획을 수행한다. 트랙에는
-직선 주행(차선 유지·등속) 중인 타겟 차량 여러 대가 있고, ego 는 느린 타겟을
-만나면 차선을 바꿔 추월하며 목표 속도로 주행한다.
+직선 주행(차선 유지·등속) 중인 타겟 차량(`TargetVehicle`) 여러 대가 있고, ego 는
+느린 타겟을 만나면 차선을 바꿔 추월하며 목표 속도로 주행한다.
+
+타겟이 차선을 유지하므로 lanekeep 예측(`prediction.predict_target_lanekeep` —
+종방향 등속, 횡방향 d 고정)이 실제 거동과 잘 맞는다. 이 record 의 `pred_*` 궤적이
+타겟 실제 경로와 거의 겹친다. (차로변경 타겟에서의 예측 비교는 `record_gen_lanechange.py`
+— 횡방향 속도까지 활용하는 `predict_target_lanechange` 와의 대비.)
 
 3D 시각: ego(파랑) + 타겟들(주황) + 2 차선 폐루프 트랙 + 매 스텝의 후보 궤적
-다발(옅은 빨강) + 최적 궤적(파랑). 재생: ../simulator_trajectory_planning.py.
+다발(밝은 파랑) + 최적 궤적(초록) + 타겟 lanekeep 예측(노랑). 재생:
+../simulator_trajectory_planning.py.
 
 실행 전 frenet_planner.py 의 `# TODO` 를 구현해야 동작합니다 — 구현 전이면
 NotImplementedError 가 납니다.
@@ -19,7 +25,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from debug_signals import DebugSignals
-from frenet_planner import TARGET_SPEED, frenet_optimal_planning
+from frenet_planner import MAX_T, TARGET_SPEED, frenet_optimal_planning
+from prediction import predict_target_lanekeep
 from target_vehicles import Maneuver, TargetFleet, TargetVehicle
 from track_map import LANE_WIDTH, TrackMap
 
@@ -30,11 +37,9 @@ EGO_W = 1.8
 
 
 def build_targets() -> list[TargetVehicle]:
-    """주행 타겟 — 타겟별로 매뉴버를 설정할 수 있다.
+    """주행 타겟 — 모두 'straight'(차선 유지·등속) 매뉴버.
 
-    현재는 모두 'straight'(차선 유지·등속). 추후 타겟마다 다른 매뉴버
-    (lane_change / accel 등) 를 줄 수 있도록 Maneuver 를 개별 지정한다.
-    초기 위치·속도·매뉴버는 시나리오 입력 — 자유롭게 바꿔 실험해 보세요.
+    초기 위치·속도는 시나리오 입력 — 자유롭게 바꿔 실험해 보세요.
     """
     return [
         TargetVehicle(s=50.0, d=-LANE_WIDTH / 2, s_d=7.0,
@@ -68,6 +73,7 @@ def run_sim() -> dict:
     tgt_x: dict[str, list[float]] = {tg.name: [] for tg in targets}
     tgt_y: dict[str, list[float]] = {tg.name: [] for tg in targets}
     tgt_yaw: dict[str, list[float]] = {tg.name: [] for tg in targets}
+    tgt_pred: dict[str, list] = {tg.name: [] for tg in targets}
     cand_per_t: list = []
     opt_per_t: list = []
     dbg = DebugSignals()
@@ -95,10 +101,15 @@ def run_sim() -> dict:
         ego_yaw.append(eyaw)
         ego_speed.append(si_d)
         ego_lat.append(di)
-        for tg in targets:
+        for tg, (ts, td, ts_d) in zip(targets, target_states, strict=True):
             tgt_x[tg.name].append(tg.x)
             tgt_y[tg.name].append(tg.y)
             tgt_yaw[tg.name].append(tg.yaw)
+            # 타겟 lanekeep 예측 — planner 가 보는 타겟 미래 (종방향 등속, d 고정)
+            s_pred, d_pred = predict_target_lanekeep(ts, td, ts_d, MAX_T, DT)
+            tgt_pred[tg.name].append(
+                [list(track.to_cartesian(sp, dp)[:2])
+                 for sp, dp in zip(s_pred, d_pred, strict=True)])
 
         # 디버그 신호 — 주석을 풀고 원하는 값/식을 넣으세요.
         # 추가·삭제·수정은 이 dbg.add() 의 kwarg 한 줄로 끝납니다.
@@ -128,9 +139,22 @@ def run_sim() -> dict:
              "t": t_arr, "X": tgt_x[tg.name], "Y": tgt_y[tg.name],
              "Yaw": tgt_yaw[tg.name]})
 
+    dynamic_paths = [
+        {"name": "candidates", "color": [70, 140, 235, 90], "radius": 0.08,
+         "t": t_arr, "points_per_t": cand_per_t},
+        {"name": "optimal", "color": [55, 225, 95, 235], "radius": 0.18,
+         "t": t_arr, "points_per_t": opt_per_t},
+    ]
+    # 타겟별 lanekeep 예측 궤적 — 차선 유지 시나리오라 타겟 실제 경로와 거의 겹친다.
+    for name in tgt_pred:
+        dynamic_paths.append(
+            {"name": f"pred_{name}", "color": [245, 215, 70, 95], "radius": 0.18,
+             "t": t_arr, "points_per_t": tgt_pred[name]})
+
     return {
         "schema_version": 2,
         "module": "05_trajectory_planning/02_frenet_moving_target",
+        "scenario": "lanekeep",
         "dt": DT,
         "actors": actors,
         "lanes": track.lanes_for_record(),
@@ -141,24 +165,19 @@ def run_sim() -> dict:
         # 디버그 신호 — 기본 blueprint 미포함. viewer 의 entity 패널에서
         # /debug/<name> 을 골라 TimeSeriesView 를 직접 추가하면 심화 분석 가능.
         "debug_scalars": dbg.to_debug_scalars(t_arr),
-        "dynamic_paths": [
-            {"name": "candidates", "color": [220, 70, 70, 55], "radius": 0.08,
-             "t": t_arr, "points_per_t": cand_per_t},
-            {"name": "optimal", "color": [55, 225, 95, 235], "radius": 0.18,
-             "t": t_arr, "points_per_t": opt_per_t},
-        ],
+        "dynamic_paths": dynamic_paths,
     }
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Frenet Moving Target 시나리오 실행 → record.json 생성")
+        description="Frenet Moving Target 차선 유지 시나리오 → record_lanekeep.json")
     parser.add_argument("--no-viewer", action="store_true",
                         help="record JSON 만 생성하고 Rerun viewer 안 띄움 (CI/batch 용)")
     args = parser.parse_args()
 
     record = run_sim()
-    out = Path(__file__).parent / "record.json"
+    out = Path(__file__).parent / "record_lanekeep.json"
     out.write_text(json.dumps(record), encoding="utf-8")
     print(f"[record] saved → {out}  |  재생: simulator_trajectory_planning.py")
 

@@ -6,8 +6,10 @@ Intent: intents/modules/05_trajectory_planning/02_frenet_moving_target.md
 종료 시간 조합)을 생성하고, 비용(jerk + 종료시간 + 차선 일관성 + 목표 속도)이
 최소이면서 동역학 한계·충돌 검사를 통과하는 궤적을 고른다.
 
-타겟 예측: CV(등속) 모델 — predict_target_cv. 종방향은 현재 s_d 로 등속 외삽,
-횡방향 d 는 고정. 의도 인식·multi-modal 같은 고도화된 예측은 다음 예제 영역이다.
+타겟 예측: 차선 유지(lanekeep) 모델 — `prediction.predict_target_lanekeep` (별도
+모듈로 분리). 종방향은 현재 s_d 로 등속 외삽, 횡방향 d 는 고정. planner 는
+관측 가능한 (s, d, s_d) 만 사용하므로 lanekeep baseline 으로 충돌 검사한다 —
+차로변경 의도 반영 예측(`predict_target_lanechange`)은 별도 시각화에서 비교.
 
 구현 과제 (# TODO):
   - QuinticPolynomial.__init__ / QuarticPolynomial.__init__  (다항식 계수 풀이)
@@ -19,6 +21,7 @@ from __future__ import annotations
 from copy import deepcopy  # noqa: F401  (calc_frenet_paths 구현 시 사용)
 
 import numpy as np
+from prediction import predict_target_lanekeep
 
 # --- 차량·트랙 한계 (차량 스케일) ---
 V_MAX = 18.0      # 최대 속도 [m/s]
@@ -46,8 +49,11 @@ K_LON = 1.0       # 종방향 비용 비중
 
 # 횡방향 종료 위치 후보 (양 차선 중앙) — LANE_WIDTH=4.0 기준
 DF_SET = np.array([2.0, -2.0])
-# 종방향 종료 속도 후보 (목표 속도 대비 가감속)
-SF_D_SET = np.array([-2.0, 0.0, 2.0])
+# 종방향 종료 속도 후보 (목표 속도 대비 가감속) — 깊은 감속(-6/-4) 포함으로
+# 느린 앞차나 차로변경 중인 타겟에 막혀도 follow 가능, 멈춤 회피.
+# 종료 속도가 V_MIN 아래로 가는 후보는 check_path 가 자동 reject (no-op 후보).
+# 결합 가속도는 ACC_MAX 로 제한되므로 깊은 감속이라도 무리한 궤적은 걸러진다.
+SF_D_SET = np.array([-6.0, -4.0, -2.0, 0.0, 2.0])
 
 
 class QuinticPolynomial:
@@ -192,26 +198,10 @@ def calc_global_paths(fplist, track):
     return fplist
 
 
-def predict_target_cv(s, d, s_d, t_horizon, dt):
-    """타겟의 CV(등속) 예측 — 종방향 등속 외삽, 횡방향 d 고정.
-
-    이 예제의 타겟 예측 수준이다. 실제 타겟 거동(target_vehicles)과 무관하게
-    planner 는 "타겟이 현재 속도로 차선을 유지한다"고만 가정한다. 의도 인식·
-    multi-modal 같은 고도화된 예측은 다음 예제에서 다룬다.
-
-    Returns:
-        (s_pred, d_pred) — 길이 t_horizon/dt 의 예측 Frenet 시계열.
-    """
-    ts = np.arange(0.0, t_horizon, dt)
-    s_pred = [s + s_d * t for t in ts]
-    d_pred = [d for _ in ts]
-    return s_pred, d_pred
-
-
 def collision_check(fp, target_states, track):
-    """fp 가 어떤 타겟의 CV 예측 궤적과 COL_CHECK 이내로 접근하면 True."""
+    """fp 가 어떤 타겟의 lanekeep 예측 궤적과 COL_CHECK 이내로 접근하면 True."""
     for s, d, s_d in target_states:
-        s_pred, d_pred = predict_target_cv(s, d, s_d, MAX_T, DT)
+        s_pred, d_pred = predict_target_lanekeep(s, d, s_d, MAX_T, DT)
         for i in range(len(fp.t)):
             tx, ty, _ = track.to_cartesian(s_pred[i], d_pred[i])
             if (tx - fp.x[i]) ** 2 + (ty - fp.y[i]) ** 2 <= COL_CHECK ** 2:

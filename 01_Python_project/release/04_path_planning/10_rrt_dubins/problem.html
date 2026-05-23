@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>과제 — Informed RRT* + Dubins 곡선 경로 탐색</title>
+  <style>
+    :root {
+      --ink: #1a2330;
+      --muted: #5b6675;
+      --line: #d9dee6;
+      --accent: #1f6feb;
+      --accent-soft: #e8f0fe;
+      --warn: #b3541e;
+      --warn-soft: #fdf0e6;
+      --ok: #1f7a3d;
+      --code-bg: #f4f6f9;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      line-height: 1.7;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 28px 96px;
+      background: #fff;
+    }
+
+    h1 {
+      font-size: 1.7rem;
+      margin: 0 0 4px;
+      letter-spacing: -0.01em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.98rem;
+      margin-bottom: 28px;
+    }
+
+    h2 {
+      font-size: 1.18rem;
+      margin: 38px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--line);
+    }
+
+    h2 .num {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.82rem;
+      width: 1.55em;
+      height: 1.55em;
+      line-height: 1.55em;
+      text-align: center;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: 1px;
+    }
+
+    h3 {
+      font-size: 1.02rem;
+      margin: 22px 0 6px;
+    }
+
+    p {
+      margin: 8px 0;
+    }
+
+    code {
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .scenario-card {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 1.02rem;
+    }
+
+    .formula {
+      background: #fbfcfe;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 14px 0;
+      font-family: "Consolas", "D2Coding", monospace;
+      font-size: 0.96rem;
+    }
+
+    .formula .lbl {
+      color: var(--muted);
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 0.94rem;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--code-bg);
+      font-weight: 600;
+    }
+
+    ul,
+    ol {
+      margin: 8px 0;
+      padding-left: 24px;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    .note {
+      background: var(--warn-soft);
+      border-left: 4px solid var(--warn);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 0.94rem;
+    }
+
+    .note b {
+      color: var(--warn);
+    }
+
+    .fig {
+      margin: 22px 0;
+      text-align: center;
+    }
+
+    .fig figcaption {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-top: 8px;
+    }
+
+    .pass-list li {
+      margin: 8px 0;
+    }
+
+    .pass-list b {
+      color: var(--ok);
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-left: 6px;
+      vertical-align: 2px;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 32px 0;
+    }
+
+    .footer {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Informed RRT* + Dubins — 최대 곡률 제약 아래 (x, y, yaw) 경로 탐색</h1>
+  <p class="subtitle">Chapter 4 · Path Planning / 10_rrt_dubins &nbsp;|&nbsp; 차량의 최소 회전 반경을 만족하는 부드러운 경로</p>
+
+  <div class="scenario-card">
+    09 Informed RRT* 의 <b>단일 tree·단일 loop·event-driven round 갱신</b> 구조는 그대로 쓰고,
+    두 가지를 바꿉니다 — state 가 (x, y) → <b>(x, y, yaw)</b> 로 늘어나고, 두 node 사이의
+    edge 가 직선이 아니라 <b>Dubins 곡선</b>(최소 회전 반경 R = 1/κ 제약을 만족하는 전진 전용
+    최단 경로)이 됩니다. 결과적으로 트리·최종 경로가 차량이 실제로 따라갈 수 있는 부드러운
+    곡선이 됩니다.
+  </div>
+
+  <div class="note">
+    <b>이 과제는 차량 제어가 없습니다.</b> 결과는 Rerun 2D viewer 의 트리 성장·informed 수렴과
+    최종 Dubins 곡선 경로로만 확인합니다. Dubins 자체(6 word 의 길이 공식)는 헬퍼
+    <code>dubins.py</code> 에 이미 구현돼 있어 호출만 합니다.
+  </div>
+
+  <h2><span class="num">1</span>문제 상황</h2>
+  <p>
+    09 Informed RRT* 의 경로는 (x, y) 직선 segment 의 연결이라, 꺾이는 부분에서 yaw 가 즉시
+    바뀝니다 — 실제 차량은 그렇게 못 움직입니다(조향각·휠베이스로 결정되는 최소 회전 반경 R 이
+    있어 yaw 가 호 위에서만 변합니다). 10 은 두 node 사이를 잇는 edge 를 <b>곡률 |κ| ≤ kappa
+    조건을 만족하는 Dubins 최단 곡선</b> 으로 바꿔, 트리·최종 경로 전체가 차량이 따를 수 있는
+    부드러운 곡선이 되게 합니다.
+  </p>
+  <table>
+    <tr><th></th><th>09 Informed RRT*</th><th>10 RRT* + Dubins</th></tr>
+    <tr><td>state</td><td>(x, y)</td><td>(x, y, yaw)</td></tr>
+    <tr><td>edge</td><td>직선 segment</td><td>Dubins 곡선 (LSL/RSR/LSR/RSL/RLR/LRL 중 최단)</td></tr>
+    <tr><td>edge cost</td><td>Euclidean 거리</td><td>Dubins 호장 (정확)</td></tr>
+    <tr><td>곡률</td><td>제약 없음 (꺾임 OK)</td><td>|κ| ≤ kappa = 1/R</td></tr>
+    <tr><td>충돌 검사</td><td>선분 fine-sample</td><td>Dubins 호의 fine-sample</td></tr>
+    <tr><td>informed 타원</td><td>Euclidean 타원</td><td>Euclidean 타원 (Dubins ≥ 직선 → valid superset)</td></tr>
+  </table>
+
+  <div class="fig">
+    <svg viewBox="0 0 300 220" width="100%" style="max-width:360px" xmlns="http://www.w3.org/2000/svg"
+      aria-label="rrt-star dubins curve">
+      <rect x="0" y="0" width="300" height="220" fill="#f4f6f9" />
+      <rect x="0" y="0" width="300" height="220" fill="none" stroke="#2a2f3a" stroke-width="4" />
+      <!-- 09 폴리라인 (참고) -->
+      <path d="M40,110 L110,60 L190,160 L260,110" fill="none"
+        stroke="#9aa3af" stroke-width="2" stroke-dasharray="4 4" opacity="0.8" />
+      <!-- 10 Dubins-like 부드러운 곡선 -->
+      <path d="M40,110 C 60,110 90,60 120,60 C 150,60 170,160 200,160 C 230,160 250,110 260,110"
+        fill="none" stroke="#1f6feb" stroke-width="3" />
+      <!-- start/goal -->
+      <circle cx="40" cy="110" r="7" fill="#1f6feb" />
+      <text x="40" y="98" text-anchor="middle" fill="#1f6feb" font-size="11" font-weight="700">S</text>
+      <line x1="40" y1="110" x2="58" y2="110" stroke="#1f6feb" stroke-width="2"
+        marker-end="url(#arr1)" />
+      <circle cx="260" cy="110" r="7" fill="#d6453d" />
+      <text x="260" y="98" text-anchor="middle" fill="#d6453d" font-size="11" font-weight="700">G</text>
+      <line x1="260" y1="110" x2="278" y2="110" stroke="#d6453d" stroke-width="2"
+        marker-end="url(#arr2)" />
+      <defs>
+        <marker id="arr1" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6"
+          orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f6feb"/></marker>
+        <marker id="arr2" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6"
+          orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d6453d"/></marker>
+      </defs>
+      <text x="150" y="205" text-anchor="middle" fill="#5b6675" font-size="10">
+        회색 점선 = 09 직선 폴리라인 · 파란 곡선 = 10 Dubins (R = 1/κ 제약 만족)
+      </text>
+    </svg>
+    <figcaption>그림 1. 같은 슬라럼을 같은 시작·도착 yaw 로 풀어도, 직선 폴리라인(점선)과 Dubins
+      곡선(실선)은 yaw 연속성·곡률 한계가 다르다.</figcaption>
+  </div>
+
+  <h2><span class="num">2</span>Map 구조 <span class="tag">S-커브 슬라럼</span></h2>
+  <ul>
+    <li>60×60 격자, 외곽 border — 09 와 <b>같은 슬라럼 맵</b> (`map_rrt_dubins.py`).</li>
+    <li>start <code>(10, 30, 0)</code>, goal <code>(50, 30, 0)</code> — 둘 다 동쪽(yaw=0) 진행.</li>
+    <li>start→goal 일직선을 막는 세로 벽 2개(통과 구멍이 위·아래로 엇갈림) + 모서리 장식 사각형 4개.</li>
+    <li>경로는 1번 벽을 위로 2번 벽을 아래로 감아 도는 완만한 S-커브. Dubins 곡률 제약
+      (|κ| ≤ 1/3, R = 3 m) 아래에서 두 게이트 사이의 좁은 회랑을 부드럽게 누빕니다 —
+      kappa 를 키우면 회전 반경이 너무 커져 못 빠져나갑니다.</li>
+  </ul>
+
+  <h2><span class="num">3</span>구현 도구</h2>
+
+  <h3>3.1 <code>dubins.py</code> — 곡선 생성 헬퍼 (수정 금지)</h3>
+  <p>
+    Dubins 자체(6 word LSL/RSR/LSR/RSL/RLR/LRL 의 normalized 길이 + 호 적분)는 별도 모듈에
+    이미 구현돼 있습니다. 알고리즘 본문에서 호출만 하세요.
+  </p>
+  <table>
+    <tr><th>함수</th><th>역할</th></tr>
+    <tr><td><code>dubins_plan(s1, s2, kappa, ds=0.1)</code></td>
+        <td>두 (x, y, yaw) 사이의 Dubins 최단 곡선 — <code>(samples, length)</code> 반환.
+        samples 는 s1 다음 점부터 끝점까지 호장 <code>ds</code> 간격 (x, y, yaw) 시퀀스
+        (s1 자체는 미포함). 정의 불가하면 <code>([], inf)</code>.</td></tr>
+    <tr><td><code>truncate_path(path, ds, max_arc)</code></td>
+        <td>호장 ds 간격으로 sampling 된 path 를 <code>max_arc</code> 까지 잘라 반환 —
+        steer 거리 제한용.</td></tr>
+  </table>
+
+  <h3>3.2 <code>rrt_dubins.py</code> 안의 helper</h3>
+  <p>
+    <code>informed_rrt_star()</code> 와 <b>같은 파일</b> 안에 helper 7개가 미리 정의돼 있습니다.
+    import 없이 본문에서 바로 호출하세요 — 직접 다시 구현하지 마세요.
+  </p>
+  <table>
+    <tr><th>함수</th><th>역할</th></tr>
+    <tr><td><code>_euclid_xy(a, b)</code></td><td>두 State 의 (x, y) Euclidean 거리 (yaw 무시) — nearest·near·informed 타원·goal 도달 판정용.</td></tr>
+    <tr><td><code>_path_collision_free(samples, obstacles)</code></td><td>Dubins fine sample 들의 정수 격자 cell 이 obstacle 가 아니면 True.</td></tr>
+    <tr><td><code>_sample_state(rng, grid_size)</code></td><td><code>[0, grid_size]²</code> × <code>[−π, π)</code> uniform random pose.</td></tr>
+    <tr><td><code>_make_dubins_connect(kappa, ds)</code></td><td><code>(s1, s2) → (samples, length)</code> 의 closure — 알고리즘 시작에서 한 번만 만들어 재사용.</td></tr>
+    <tr><td><code>_steer_to(s_from, s_to, connect, eta, ds)</code></td><td>s_from→s_to Dubins 를 호장 <code>eta</code> 까지 잘라 <code>(steer_samples, steer_len)</code> 반환.</td></tr>
+    <tr><td><code>_reconstruct_path(nodes, parents, edge_samples, end_idx)</code></td><td>parent chain 을 따라 <b>저장된 edge samples</b> 를 이어 start → end 경로(Dubins fine sample 의 연속) 복원. start 포함.</td></tr>
+    <tr><td><code>_sample_in_ellipse(rng, x_start, x_goal, c_best)</code></td><td>start·goal (x, y) 를 초점, <code>c_best</code> 를 장축으로 하는 Euclidean 타원 안 uniform (x, y) — yaw 는 따로 채워야 함.</td></tr>
+  </table>
+  <div class="note">
+    <b>중요 — edge_samples 를 보관해야 합니다.</b> Choose-parent 시 채택한 후보의 Dubins
+    samples 를 <code>edge_samples[new_i]</code> 에 저장해 두고, 경로 복원·시각화는 <b>저장된
+    samples</b> 만 사용하세요. <code>_reconstruct_path</code> 안에서 <code>dubins_plan</code> 을
+    재호출하면 floating-point 오차로 다른 word 가 선택돼 Bellman 원리가 깨질 수 있습니다
+    (특히 잘린 steer 의 endpoint 에서 자주 발생). 저장된 sample 이 트리의 단일 진실의 원천입니다.
+  </div>
+
+  <h2><span class="num">4</span>구현 과제</h2>
+  <p>
+    <code>rrt_dubins.py</code> 의 <code>informed_rrt_star()</code> 함수 본문(<code># TODO</code>)을
+    구현하세요. 시그니처는 이미 주어져 있습니다.
+  </p>
+  <pre>def informed_rrt_star(
+    start: tuple[float, float, float],
+    goal: tuple[float, float, float],
+    obstacles: set[tuple[int, int]],
+    grid_size: int,
+    kappa: float = 1.0 / 3.0,
+    max_iter: int = 1500,
+    eta: float = 6.0, goal_range: float = 4.0, goal_range_min: float = 1.5,
+    eta_decay: float = 0.8, eta_min: float = 2.5,
+    improve_eps: float = 0.3,
+    search_radius: float = 10.0, goal_sample_rate: float = 0.05,
+    ds: float = 0.2,
+    seed: int | None = 0,
+    on_step: StepFn | None = None,
+    on_improve: Callable[[int, float, list[State]], None] | None = None,
+) -> list[State]</pre>
+  <table>
+    <tr><th>인자</th><th>의미</th></tr>
+    <tr><td><code>kappa</code></td><td>최대 곡률 <code>1/R</code> — 기본 1/3 (R = 3 m). Dubins 호의 좌·우 회전 곡률 절대값 상한.</td></tr>
+    <tr><td><code>max_iter</code></td><td>전체 sampling 반복 수 (anytime budget) — 유일한 종료 조건.</td></tr>
+    <tr><td><code>eta</code></td><td>한 steer 가 자라는 <b>Dubins 호장</b> 상한 [m] (round <code>r</code> 은 <code>eta · eta_decay^r</code>, <code>eta_min</code> 하한 clip).</td></tr>
+    <tr><td><code>ds</code></td><td>Dubins 호 sampling 의 호장 step [m] — 충돌 검사·path 점 간격 (작을수록 촘촘).</td></tr>
+    <tr><td><code>goal_range</code></td><td>new node 의 (x, y) 가 goal 에서 이 거리 안이면 도달 후보. yaw 는 별도로 보지 않음.</td></tr>
+    <tr><td><code>improve_eps</code></td><td>round 진행으로 인정하는 최소 개선 폭 — 새 경로가 이만큼은 짧아야 c_best·타원·round 갱신 (미세 개선 폭증 방지).</td></tr>
+    <tr><td><code>search_radius</code></td><td>choose-parent·rewire 후보의 (x, y) Euclidean 반경.</td></tr>
+    <tr><td><code>on_step</code></td><td>edge 추가·rewire 직후 호출 — <code>(child, parent, samples, iteration)</code>. <code>samples</code> 는 collision-check 통과 Dubins fine sample (parent 미포함).</td></tr>
+    <tr><td><code>on_improve</code></td><td>c_best 갱신마다 호출 — <code>(iteration, c_best, snap_path)</code>. <code>snap_path</code> 는 그 round 의 채택 경로(Dubins fine sample 의 연속, start 포함).</td></tr>
+    <tr><td><b>반환</b></td><td>start 포함, Dubins 호 sample 의 연속 (x, y, yaw) 리스트. 미발견 시 <code>[]</code>.</td></tr>
+  </table>
+
+  <h3>게인·파라미터 튜닝</h3>
+  <p>
+    이 과제에서 구현하는 것은 <b>알고리즘 로직</b> 입니다. 탐색 동작을 좌우하는 값
+    (<code>max_iter</code>, <code>seed</code>, <code>eta</code>, <code>kappa</code>,
+    <code>ds</code>, <code>search_radius</code>)은 <code>record_gen.py</code> 의
+    <code>--max-iter</code> / <code>--seed</code> / <code>--eta</code> / <code>--kappa</code> /
+    <code>--ds</code> / <code>--radius</code> 옵션으로 viewer 에서 자유롭게 실험할 수
+    있습니다 — kappa 를 키우면 회전 반경이 커져 좁은 게이트를 못 빠져나가고, ds 를 줄이면
+    충돌 검사가 촘촘해집니다. <b>합격 기준 검증용 값은 <code>test_*.py</code> 에 있으며 변경
+    금지</b> 입니다.
+  </p>
+
+  <h2><span class="num">5</span>실행 방법</h2>
+  <p>모든 명령은 git 저장소 루트에서 실행합니다.</p>
+
+  <h3>구현 파일</h3>
+  <pre>01_Python_project_refactored/release/04_path_planning/10_rrt_dubins/rrt_dubins.py</pre>
+
+  <h3>테스트 — 합격 기준 검증</h3>
+  <pre>uv run pytest 01_Python_project_refactored/release/04_path_planning/10_rrt_dubins/ -v</pre>
+
+  <h3>시나리오 실행 → record JSON 생성 + Rerun viewer 자동 실행</h3>
+  <pre>uv run python 01_Python_project_refactored/release/04_path_planning/10_rrt_dubins/record_gen.py</pre>
+  <p>
+    2D viewer 에 격자 + 슬라럼 장애물 + start/goal pose 가 표시되고, timeline scrubber 로 트리
+    성장을 재생합니다 — 하나의 트리가 계속 이어 자라며, edge 가 직선이 아닌 부드러운 Dubins
+    곡선 임을 한눈에 볼 수 있습니다. 09 와 마찬가지로 <b>반투명 보라색 타원</b>이 현재 informed
+    round 의 탐색 영역, <b>밝은 청록 곡선</b>이 그 round 의 채택 경로(하이라이트)입니다. 개선이
+    일어날수록 새 node 가 더 좁은 타원 안으로 모이고, 채택 경로도 짧아집니다. 옅은 노랑 점이
+    누적 tree node, 마젠타 곡선이 최종 경로(Dubins fine sample 의 연속) 입니다.
+  </p>
+  <ul>
+    <li>JSON 만 만들려면 <code>--no-viewer</code>.</li>
+    <li><code>--max-iter N</code> 으로 전체 sampling 반복 수(기본 1500).</li>
+    <li><code>--seed N</code> 으로 random seed 변경(기본 0, 재현성).</li>
+    <li><code>--eta E</code> 로 한 steer 의 Dubins 호장 상한(기본 6.0).</li>
+    <li><code>--kappa K</code> 로 최대 곡률 1/R(기본 1/3 → R = 3 m). 키우면 좁은 게이트 통과 실패.</li>
+    <li><code>--ds D</code> 로 Dubins 호 sampling 호장 step [m] (기본 0.2).</li>
+    <li><code>--radius R</code> 로 choose-parent·rewire 반경(기본 10.0).</li>
+    <li><code>--skip N</code> 으로 frame subsample(기본 10).</li>
+  </ul>
+
+  <h3>Rerun viewer 재생 (search 전용 simulator)</h3>
+  <pre>uv run python 01_Python_project_refactored/release/04_path_planning/simulator_search.py</pre>
+  <p>인자 없이 실행하면 <code>04_path_planning/</code> 하위의 모든 search record 를 한 viewer 에 멀티 로드 —
+    A* / RRT / RRT* / Informed RRT* / Informed RRT* + Dubins 를 한 화면에서 비교할 수 있습니다.</p>
+
+  <h3>디버그 신호 — iteration 별 분석 (선택)</h3>
+  <p>
+    <code>informed_rrt_star()</code> 는 optional 인자 <code>dbg</code> 를 받습니다. 탐색 루프
+    안에서 <code>dbg</code> 가 주어졌을 때 <code>dbg.add(...)</code> 를 호출하면, 매 iteration 의
+    내부 값이 record 의 <code>debug_scalars</code> 로 저장됩니다 — goal 거리·reject·tree 크기·
+    재배선 수·현재 round·현재 최단 비용(<code>best_cost</code>) 같은 값을 남깁니다.
+  </p>
+  <pre>for it in range(max_iter):
+    ...
+    if dbg is not None:
+        dbg.add(goal_dist=..., rejected=..., tree_size=...,
+                rewire_count=..., inform_round=..., best_cost=...)   # 매 iteration 한 줄</pre>
+  <p>
+    <code>iteration</code> 은 round 가 바뀌어도 이어지는 전역 카운터이므로, 디버그 신호도 모든
+    round 가 하나의 연속 타임라인으로 보입니다 — <code>best_cost</code> 가 round 마다 계단식으로
+    내려가는 것이 informed 수렴입니다. 좌측 entity 패널에서 <code>/debug/&lt;이름&gt;</code> 을
+    골라 TimeSeriesView 를 추가하세요.
+  </p>
+
+  <h2><span class="num">6</span>합격 기준 <span class="tag">pytest</span></h2>
+  <p>알고리즘 형태(자료 구조·RNG 구현)는 자유 — 동작 명세(behavioral spec)만 검증합니다.</p>
+  <ol class="pass-list">
+    <li><b>start 일치</b> — <code>path[0] == start</code>.</li>
+    <li><b>goal 근접</b> — <code>‖path[-1].xy − goal.xy‖ &lt; goal_range</code> (테스트 기준 2.5).</li>
+    <li><b>sample 충돌 없음</b> — 모든 (x, y, yaw) sample 의 정수 cell 이 obstacle 가 아님.</li>
+    <li><b>Dubins 적분 연속성</b> — 연속 두 sample 의 (x, y) 거리 ≤ 2·ds (호장 step 간격 보장).</li>
+    <li><b>곡률 제약</b> — 연속 두 sample 의 yaw 변화 <code>|Δyaw| ≤ ds · kappa</code> (Dubins 호의 곡률 한계).</li>
+    <li><b>재현성</b> — 같은 seed 면 같은 path.</li>
+  </ol>
+
+  <h2><span class="num">7</span>힌트</h2>
+  <ul>
+    <li><b>09 의 골격을 그대로 이식</b> — 단일 tree·단일 loop·event-driven round 갱신. 차이는
+      edge 가 직선 → Dubins 곡선 으로 바뀌고, state 에 yaw 가 붙는 것뿐입니다. tree 자료구조
+      (nodes·parents·children·cost)에 <b><code>edge_cost</code>·<code>edge_samples</code></b> 두
+      dict 가 더 붙습니다 — 부모→자식의 Dubins 호장과 그 호의 fine sample 을 노드별로 저장.</li>
+    <li><b>connect 클로저는 한 번만</b> — 알고리즘 시작에서
+      <code>connect = _make_dubins_connect(kappa, ds)</code> 로 만들어 두고, 이후 nearest 검증·
+      choose-parent·rewire 에서 같은 closure 를 재사용합니다.</li>
+    <li><b>Nearest 는 Euclidean (x, y)</b> — Dubins distance 정확도는 포기하고 fast heuristic 으로
+      가까운 node 를 고른 뒤, 실제 Dubins 연결이 정의 불가하거나 충돌이면 reject 합니다.
+      Dubins 는 비대칭이라 i → j 와 j → i 의 호장이 다르니, choose-parent·rewire 의 각 후보 i 에
+      대해 <code>connect(nodes[i], new_pt)</code> 를 새로 호출해야 합니다.</li>
+    <li><b>informed 타원은 Euclidean</b> — Dubins 호장 ≥ Euclidean 거리이므로, c_best (Dubins) 로
+      정의된 Euclidean 타원은 Dubins 비용 ≤ c_best 인 모든 경로 node 의 valid superset 입니다
+      (Gammell 2014 의 표준 trick). <code>_sample_in_ellipse</code> 가 (x, y) 를 주면, yaw 는
+      <code>rng.uniform(-pi, pi)</code> 로 따로 채웁니다.</li>
+    <li><b>edge_samples 저장 = Bellman 정확성</b> — collision-check 를 통과한 그 시점의 samples 를
+      <code>edge_samples[child]</code> 로 보관하고, 경로 복원은 <code>_reconstruct_path</code> 가
+      그 stored samples 만 잇습니다. <code>dubins_plan</code> 재호출 X — fp precision 으로 다른
+      word 가 선택될 수 있습니다.</li>
+    <li><b>개선 검사 → on_improve</b> — c_best 갱신 순간에
+      <code>on_improve(it, c_best, _reconstruct_path(...))</code> 를 호출하면 record_gen 이 그
+      round 의 informed 타원·채택 경로를 viewer 에 저장합니다.</li>
+  </ul>
+
+  <h2><span class="num">8</span>제약</h2>
+  <ul>
+    <li><code>map_rrt_dubins.py</code>, <code>dubins.py</code>, <code>record_gen.py</code>,
+        <code>test_rrt_dubins.py</code> — <b>수정 금지</b> (검증 환경).</li>
+    <li><code>rrt_dubins.py</code> 안의 helper(<code>_euclid_xy</code>,
+        <code>_path_collision_free</code>, <code>_sample_state</code>,
+        <code>_make_dubins_connect</code>, <code>_steer_to</code>, <code>_reconstruct_path</code>,
+        <code>_sample_in_ellipse</code>) — 수정 금지.</li>
+    <li><code>simulator_search.py</code>(Chapter 4 공용) — 수정 금지.
+        <code>informed_rrt_star()</code> 의 시그니처 변경 금지.</li>
+    <li>RNG 는 <code>random</code> 모듈만 사용 — <code>numpy.random</code> / scipy 등 다른 RNG 라이브러리 금지.</li>
+  </ul>
+
+  <hr>
+  <p class="footer">
+    IVS — Intelligent Vehicle Systems · Chapter 4 Path Planning · 10_rrt_dubins<br>
+    구현 파일: <code>rrt_dubins.py</code> · 검증: <code>pytest</code> · 시각화: Rerun 2D viewer
+  </p>
+
+</body>
+
+</html>

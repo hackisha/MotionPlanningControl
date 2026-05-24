@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import math
-from typing import Callable
+from collections.abc import Callable
 
 _ACTIONS: list[tuple[int, int, float]] = [
     (0, -1, 1.0), (0, 1, 1.0), (-1, 0, 1.0), (1, 0, 1.0),

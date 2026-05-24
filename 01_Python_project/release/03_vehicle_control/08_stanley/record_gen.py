@@ -93,6 +93,13 @@ def main() -> None:
         lh_global = rot @ np.array(out.lookahead_local) + np.array([plant.X, plant.Y])
         lookahead_pts.append(lh_global.tolist())
         delta_arr[i] = out.delta
+        # 디버그 신호 — 주석을 풀고 원하는 값/식을 넣으세요.
+        # 추가·삭제·수정은 이 dbg.add() 의 kwarg 한 줄로 끝납니다.
+        dbg.add(
+            # debug1=<신호 값 또는 식>,
+            # debug2=<신호 값 또는 식>,
+            # debug3=<신호 값 또는 식>,
+        )
         plant.step(out.delta, vx)
 
     # plotly (opt-in: --plot) --------------------------------------------
@@ -140,6 +147,9 @@ def main() -> None:
             {"name": "lateral_error", "unit": "m", "t": t.tolist(), "value": err_arr.tolist()},
             {"name": "delta", "unit": "rad", "t": t.tolist(), "value": delta_arr.tolist()},
         ],
+        # 디버그 신호 — 기본 blueprint 미포함. viewer 의 entity 패널에서 /debug/<name>
+        # 을 골라 TimeSeriesView 를 직접 추가하면 심화 분석 가능.
+        "debug_scalars": dbg.to_debug_scalars(t),
         "dynamic_paths": [
             {"name": "fit", "color": [255, 150, 0, 200], "radius": 0.08,
              "t": t.tolist(), "points_per_t": fit_curves},

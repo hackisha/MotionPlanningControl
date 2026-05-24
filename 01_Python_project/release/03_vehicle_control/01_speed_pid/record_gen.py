@@ -9,11 +9,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from debug_signals import DebugSignals
 from speed_pid import SpeedPID
 from vehicle_long_speed import VehicleLong
 
@@ -43,6 +47,7 @@ def main() -> None:
     vx = np.zeros(steps)
     ax = np.zeros(steps)
     u_arr = np.zeros(steps)
+    dbg = DebugSignals()  # 디버그 신호 수집기 — 신호 추가/삭제는 아래 dbg.add() 한 줄
     for i in range(steps):
         t[i] = i * dt
         x[i] = plant.x
@@ -50,6 +55,13 @@ def main() -> None:
         ax[i] = plant.ax
         u = controller.step(reference=reference, measure=plant.vx)
         u_arr[i] = u
+        # 디버그 신호 — 주석을 풀고 원하는 값/식을 넣으세요.
+        # 추가·삭제·수정은 이 dbg.add() 의 kwarg 한 줄로 끝납니다.
+        dbg.add(
+            # debug1=<신호 값 또는 식>,
+            # debug2=<신호 값 또는 식>,
+            # debug3=<신호 값 또는 식>,
+        )
         plant.step(u)
 
     # plotly (opt-in: --plot) --------------------------------------------

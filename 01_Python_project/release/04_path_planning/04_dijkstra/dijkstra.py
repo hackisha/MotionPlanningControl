@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import math
-from typing import Callable
+from collections.abc import Callable
 
 # 8-connected actions: (dx, dy, cost). 직진=1, 대각=√2.
 _ACTIONS: list[tuple[int, int, float]] = [

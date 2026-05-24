@@ -21,6 +21,8 @@ from plotly.subplots import make_subplots
 
 # 05_frame_transform 의 구현을 sys.path 로 직접 import (frame_transform 패턴).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "05_frame_transform"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from debug_signals import DebugSignals
 from frame_transform import Global2Local, PolynomialFitting, PolynomialValue
 from lateral_pipeline_pure_pursuit import LateralPipeline  # 본 폴더 (per-problem 사본)
 from pure_pursuit import PurePursuit
@@ -80,6 +82,7 @@ def main() -> None:
     fit_curves: list[list[list[float]]] = []
     lookahead_pts: list[list[float]] = []
     lookahead_x = vx * pp.lookahead_time
+    dbg = DebugSignals()  # 디버그 신호 수집기 — 신호 추가/삭제는 아래 dbg.add() 한 줄
     for i in range(steps):
         X[i] = plant.X
         Y[i] = plant.Y
@@ -94,6 +97,13 @@ def main() -> None:
         lh_global = rot @ np.array(out.lookahead_local) + np.array([plant.X, plant.Y])
         lookahead_pts.append(lh_global.tolist())
         delta_arr[i] = out.delta
+        # 디버그 신호 — 주석을 풀고 원하는 값/식을 넣으세요.
+        # 추가·삭제·수정은 이 dbg.add() 의 kwarg 한 줄로 끝납니다.
+        dbg.add(
+            # debug1=<신호 값 또는 식>,
+            # debug2=<신호 값 또는 식>,
+            # debug3=<신호 값 또는 식>,
+        )
         plant.step(out.delta, vx)
 
     # plotly (opt-in: --plot) --------------------------------------------
@@ -143,6 +153,9 @@ def main() -> None:
             {"name": "lateral_error", "unit": "m", "t": t.tolist(), "value": err_arr.tolist()},
             {"name": "delta", "unit": "rad", "t": t.tolist(), "value": delta_arr.tolist()},
         ],
+        # 디버그 신호 — 기본 blueprint 미포함. viewer 의 entity 패널에서 /debug/<name>
+        # 을 골라 TimeSeriesView 를 직접 추가하면 심화 분석 가능.
+        "debug_scalars": dbg.to_debug_scalars(t),
         "dynamic_paths": [
             {"name": "fit", "color": [255, 150, 0, 200], "radius": 0.08,
              "t": t.tolist(), "points_per_t": fit_curves},

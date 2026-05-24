@@ -18,7 +18,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent /
 from frame_transform import Global2Local, PolynomialFitting  # noqa: E402
 from pure_pursuit import PurePursuit  # noqa: E402
 
-
 DT = 0.1
 SIM_TIME = 30.0
 VX = 3.0

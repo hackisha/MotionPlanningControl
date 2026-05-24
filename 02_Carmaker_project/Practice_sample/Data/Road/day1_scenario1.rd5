@@ -1,14 +1,14 @@
 #INFOFILE1.1 (UTF-8) - Do not remove this line!
 FileIdent = IPGRoad 14.0
-FileCreator = CarMaker for Simulink 14.1.2
-LibVersion = 14.1.2
+FileCreator = CarMaker Office 14.0.1
+LibVersion = 14.0.1
 Country = DEU
 nLinks = 1
 nJunctions = 0
 nObjects = 50
 nRoutes = 1
 RoadNetworkLength = 500.000000000006
-BBox = -10.017470673261 510.061157773895 -23.4998318140656 15.9957668620897 -11 11
+BBox = -10.0349413465219 510.061157773895 -23.4998318140656 19.4957232583289 -11 11
 Route.0.Length = 500.000000000006
 RST.Unit = kmh
 RST = 50 100 130 30 70 30 0 -1

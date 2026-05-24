@@ -190,6 +190,16 @@
       vertical-align: 2px;
     }
 
+    .swatch {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      vertical-align: -2px;
+      margin-right: 6px;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
     hr {
       border: none;
       border-top: 1px solid var(--line);
@@ -208,13 +218,13 @@
 
   <h1>궤적 계획 — Frenet 좌표계 최적 궤적 (이동 타겟 회피)</h1>
   <p class="subtitle">Chapter 5 · Trajectory Planning / 02_frenet_moving_target &nbsp;|&nbsp;
-    샘플링 기반 최적 궤적 계획기의 핵심</p>
+    샘플링 기반 최적 궤적 계획기의 핵심 · 차선 유지 + 차로변경 두 시나리오</p>
 
   <div class="scenario-card">
-    여러분의 차량(<b>ego</b>)은 2 차선 폐루프 트랙을 주행합니다. 앞에는 차선을 유지하며
-    달리는 다른 차량(<b>타겟</b>)들이 있습니다. 매 시간 스텝마다 여러 <b>후보 궤적</b>을
-    만들어, 충돌 없이 가장 매끄럽고 목표 속도에 가까운 궤적을 고르는 <b>Frenet 최적
-    궤적 계획기</b>를 구현해 보세요.
+    여러분의 차량(<b>ego</b>)은 2 차선 폐루프 트랙을 주행합니다. 앞에는 차선을 유지
+    하거나 자율적으로 옆 차선으로 차로변경을 시도하는 다른 차량(<b>타겟</b>)들이
+    있습니다. 매 시간 스텝마다 여러 <b>후보 궤적</b>을 만들어, 충돌 없이 가장 매끄럽고
+    목표 속도에 가까운 궤적을 고르는 <b>Frenet 최적 궤적 계획기</b>를 구현해 보세요.
   </div>
 
   <h2><span class="num">1</span>문제 상황</h2>
@@ -227,7 +237,7 @@
   </p>
   <p>매 스텝 계획기가 하는 일:</p>
   <ul>
-    <li><b>후보 궤적 다발 생성</b> — 목표 차선(2 개) × 종방향 속도(3 개) × 종료 시간(4 개)
+    <li><b>후보 궤적 다발 생성</b> — 목표 차선(2 개) × 종방향 속도(5 개) × 종료 시간(4 개)
       의 모든 조합으로 후보 궤적을 만듭니다.</li>
     <li><b>비용 평가</b> — 각 후보에 jerk(승차감) · 종료 시간 · 차선 일관성 · 목표 속도
       오차로 비용을 매깁니다.</li>
@@ -238,6 +248,16 @@
     ego 는 매 스텝 최적 궤적의 한 스텝 뒤 상태로 전진합니다(계획만 수행, 별도 제어기
     없음). 느린 타겟을 만나면 계획기가 자연스럽게 차선을 바꿔 추월하게 됩니다.
   </p>
+  <p>
+    시나리오는 두 가지로 제공됩니다:
+  </p>
+  <ul>
+    <li><b>차선 유지 시나리오</b>(<code>record_gen_lanekeep.py</code>) — 타겟이 모두
+      직선 주행(차선 유지·등속). 추월·차선 일관성 같은 기본 거동을 명확히 보기 위한 baseline.</li>
+    <li><b>차로변경 시나리오</b>(<code>record_gen_lanechange.py</code>) — 타겟이 자율적으로
+      차로변경을 시도(추월·자차 앞 끼어들기·랜덤 주행). 타겟 의도와 planner 예측 간의
+      괴리를 시각화로 드러내는 시나리오.</li>
+  </ul>
 
   <div class="fig">
     <svg viewBox="0 0 860 250" width="100%" style="max-width:820px" xmlns="http://www.w3.org/2000/svg"
@@ -248,12 +268,14 @@
       <line x1="0" y1="200" x2="860" y2="200" stroke="#c2c9d4" stroke-width="3" />
       <line x1="0" y1="140" x2="860" y2="140" stroke="#fff" stroke-width="3" stroke-dasharray="26 20" />
 
-      <!-- candidate trajectories (faint red fan) -->
-      <path d="M150,170 C320,170 400,168 560,170" stroke="#e0696955" stroke-width="3" fill="none" />
-      <path d="M150,170 C320,168 420,120 560,110" stroke="#e0696955" stroke-width="3" fill="none" />
-      <path d="M150,170 C320,172 430,176 560,170" stroke="#e0696955" stroke-width="3" fill="none" />
-      <!-- optimal trajectory (blue) -->
-      <path d="M150,170 C320,170 410,112 560,110" stroke="#1f6feb" stroke-width="4.5" fill="none" />
+      <!-- candidate trajectories (light blue fan) -->
+      <path d="M150,170 C320,170 400,168 560,170" stroke="#4690ff75" stroke-width="3" fill="none" />
+      <path d="M150,170 C320,168 420,120 560,110" stroke="#4690ff75" stroke-width="3" fill="none" />
+      <path d="M150,170 C320,172 430,176 560,170" stroke="#4690ff75" stroke-width="3" fill="none" />
+      <!-- optimal trajectory (green) -->
+      <path d="M150,170 C320,170 410,112 560,110" stroke="#37cb5f" stroke-width="4.5" fill="none" />
+      <!-- target lanekeep prediction (yellow, in front of target) -->
+      <path d="M546,170 L640,170" stroke="#f5d746aa" stroke-width="5" fill="none" stroke-linecap="round" />
 
       <!-- ego (blue) -->
       <g>
@@ -266,12 +288,64 @@
         <text x="508" y="175" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">TARGET</text>
       </g>
 
-      <text x="690" y="104" fill="#1f6feb" font-size="13" font-weight="600">최적 궤적</text>
-      <text x="690" y="186" fill="#bd6a6a" font-size="13" font-weight="600">후보 궤적 다발</text>
+      <text x="690" y="104" fill="#1f7a3d" font-size="13" font-weight="600">최적 궤적</text>
+      <text x="690" y="186" fill="#3a7ad0" font-size="13" font-weight="600">후보 궤적 다발</text>
+      <text x="640" y="162" fill="#a08208" font-size="12" font-weight="600">타겟 예측</text>
     </svg>
     <figcaption>그림 1. 매 스텝 후보 궤적 다발을 만들어 — 느린 타겟을 만나면 옆 차선으로
       추월하는 궤적이 최적으로 선택된다.</figcaption>
   </div>
+
+  <h3>Viewer 색·요소 안내</h3>
+  <p>
+    Rerun viewer 에 표시되는 요소와 색입니다 — 실행 후 한눈에 매칭하기 위한 범례입니다.
+  </p>
+  <table>
+    <tr>
+      <th>요소</th>
+      <th>색·표시</th>
+      <th>의미</th>
+    </tr>
+    <tr>
+      <td><b>ego</b></td>
+      <td><span class="swatch" style="background:#3264dc"></span>파랑 차체</td>
+      <td>자차. 매 스텝 최적 궤적의 한 스텝 뒤로 전진.</td>
+    </tr>
+    <tr>
+      <td><b>타겟</b></td>
+      <td><span class="swatch" style="background:#e0892e"></span>주황 차체</td>
+      <td>주변 차량. 시나리오마다 차선 유지 또는 자율적 차로변경.</td>
+    </tr>
+    <tr>
+      <td><b>후보 궤적 다발</b><br><code>candidates</code></td>
+      <td><span class="swatch" style="background:#4690eb"></span>밝은 파랑, 가는 선, 반투명</td>
+      <td>매 스텝 planner 가 생성한 모든 후보(속도×차선×종료시간 조합). 동역학·충돌
+        검사를 통과한 것만 표시됩니다.</td>
+    </tr>
+    <tr>
+      <td><b>최적 궤적</b><br><code>optimal</code></td>
+      <td><span class="swatch" style="background:#37cb5f"></span>초록, 굵은 선</td>
+      <td>후보 중 비용 최소 궤적 — 다음 한 스텝을 이 궤적의 두 번째 점으로 따라갑니다.</td>
+    </tr>
+    <tr>
+      <td><b>타겟 예측 궤적</b><br><code>pred_&lt;타겟이름&gt;</code></td>
+      <td><span class="swatch" style="background:#f5d746"></span>노랑, 굵은 선, 반투명</td>
+      <td>planner 가 가정한 타겟의 미래 위치. <i>lanekeep</i> 시나리오는 d 고정 등속 외삽
+        (<code>predict_target_lanekeep</code>), <i>lanechange</i> 시나리오는 횡속도 d_d 까지
+        활용한 1 차 지연 외삽 + 옆 차선 도착 시 정지(<code>predict_target_lanechange</code>).
+        충돌 검사가 어떤 미래를 가정해 회피하는지 한눈에 보입니다.</td>
+    </tr>
+    <tr>
+      <td><b>차로변경 매뉴버 화살표</b><br>(차로변경 시나리오만)</td>
+      <td><span class="swatch" style="background:#28e696"></span>청록 (진행) /
+        <span class="swatch" style="background:#ff8c14"></span>주황 (보류)</td>
+      <td><b>타겟의 실제 차로변경 의도</b> — 타겟 위 공중에 옆 방향으로 뻗는 화살표.
+        청록은 차로변경 진행 중, 주황은 옆 차선이 막혀 보류 중. <b>이 화살표는 planner 가
+        보는 정보가 아니라 ground truth</b> 입니다 — 노란 예측 궤적과 비교해 "planner 의
+        예측 모델이 타겟의 실제 의도를 얼마나 잘 따라잡는지" 직접 관찰할 수 있습니다.
+        차선 유지 중에는 화살표가 사라집니다.</td>
+    </tr>
+  </table>
 
   <h2><span class="num">2</span>주어진 환경</h2>
   <p>아래 파일들은 검증 환경입니다 — 읽어서 인터페이스를 파악하되 <b>수정하지 않습니다</b>.</p>
@@ -291,22 +365,32 @@
     </tr>
     <tr>
       <td><code>target_vehicles.py</code></td>
-      <td>타겟 차량 plant. <code>Maneuver</code> · <code>TargetVehicle</code> ·
-        <code>TargetFleet</code>. 타겟은 차선을 유지(<code>"straight"</code>)하며, 같은 차선에서
-        앞차에 근접하면 두 차가 속도를 맞바꿔(<code>TargetFleet</code>) 타겟끼리는 서로
-        추돌하지 않습니다.</td>
+      <td>타겟 차량 plant — 거동 종류별 두 클래스.
+        <code>TargetVehicle</code> + <code>TargetFleet</code> 는 차선 유지(<code>"straight"</code>)
+        + 같은 차선 근접 시 속도 교환(타겟끼리 추돌 불가).
+        <code>TargetVehicle_LC</code> + <code>TargetFleet_LC</code> 는 차로변경 상태기계 + 추월·
+        악의적 끼어들기·랜덤 차로변경 거동 규칙.</td>
+    </tr>
+    <tr>
+      <td><code>prediction.py</code></td>
+      <td>타겟 예측 모델 — <code>predict_target_lanekeep</code>(종방향 등속, d 고정 baseline)과
+        <code>predict_target_lanechange</code>(횡속도 d_d 까지 활용해 옆 차선 중심으로 1 차
+        지연 외삽 + 도착 시 정지). 시나리오별 record_gen 이 시각화에 사용.</td>
     </tr>
     <tr>
       <td><code>frenet_planner.py</code> 의 주어진 함수</td>
-      <td><code>calc_global_paths</code>(Frenet→전역 변환), <code>predict_target_cv</code>(타겟
-        예측), <code>collision_check</code> / <code>check_path</code>(검사),
+      <td><code>calc_global_paths</code>(Frenet→전역 변환),
+        <code>collision_check</code> / <code>check_path</code>(검사),
         <code>frenet_optimal_planning</code>(최적 선택) — 이미 구현되어 있습니다.</td>
     </tr>
   </table>
   <p>
-    <b>타겟 예측은 CV(등속) 모델</b>입니다 — 계획기는 "타겟이 현재 속도로 차선을
-    유지한다"고만 가정합니다(<code>predict_target_cv</code>, 주어짐). 타겟의 실제 거동과
-    예측 모델은 분리되어 있으며, 더 정교한 예측은 다음 과제에서 다룹니다.
+    <b>planner 의 충돌 검사는 lanekeep 예측</b>(<code>predict_target_lanekeep</code>)을
+    사용합니다 — 계획기는 관측 가능한 <code>(s, d, s_d)</code> 만 알고 "타겟이 현재
+    속도로 차선을 유지한다"고 가정합니다. 차로변경 시나리오의 노란 예측은 d_d 까지
+    활용한 <code>predict_target_lanechange</code> 로 그려지므로, 시각화된 예측과 planner
+    가 실제로 회피에 쓰는 예측이 다를 수 있습니다 — 예측 모델 업그레이드의 동기를
+    직접 보여 주는 구성입니다.
   </p>
 
   <h2><span class="num">3</span>구현 과제</h2>
@@ -382,14 +466,14 @@
       생성 알고리즘. 시그니처는 고정, 본문(<code># TODO</code>)만 채웁니다. 비용 가중치
       (<code>K_J_lat, K_T, K_D, K_V …</code>) 와 차량 한계는 파일 상단에 <b>주어진 상수</b>
       입니다.</li>
-    <li><b>producer</b> (<code>record_gen.py</code>) — 주행 <b>시나리오</b>를 정하는 곳:
-      타겟의 초기 위치·속도·매뉴버(<code>build_targets</code>). 자유롭게 바꿔 실험해
-      보세요(타겟 수·위치·속도).</li>
+    <li><b>producer</b> (<code>record_gen_lanekeep.py</code> / <code>record_gen_lanechange.py</code>)
+      — 주행 <b>시나리오</b>를 정하는 곳: 타겟의 초기 위치·속도(<code>build_targets</code>).
+      자유롭게 바꿔 실험해 보세요(타겟 수·위치·속도).</li>
     <li><b><code>test_*.py</code></b> — 합격 기준 검증용. <b>변경 금지</b>.</li>
   </ul>
   <p>
-    <code># TODO</code> 세 곳을 모두 구현하면 <code>record_gen.py</code> 가 그대로 동작합니다
-    — 구현 전에는 <code>NotImplementedError</code> 가 납니다.
+    <code># TODO</code> 세 곳을 모두 구현하면 두 시나리오 <code>record_gen_*.py</code> 가
+    그대로 동작합니다 — 구현 전에는 <code>NotImplementedError</code> 가 납니다.
   </p>
 
   <h2><span class="num">4</span>실행 방법</h2>
@@ -402,24 +486,28 @@
   <pre>uv run pytest 01_Python_project/release/05_trajectory_planning/02_frenet_moving_target/ -v</pre>
 
   <h3>시나리오 실행 → record JSON 생성 + Rerun viewer 자동 실행</h3>
-  <pre>uv run python 01_Python_project/release/05_trajectory_planning/02_frenet_moving_target/record_gen.py</pre>
+  <p>두 시나리오를 각각 실행합니다 — 각 명령이 자신의 record JSON 을 만들고 viewer 를 띄웁니다.</p>
+  <pre>uv run python 01_Python_project/release/05_trajectory_planning/02_frenet_moving_target/record_gen_lanekeep.py
+uv run python 01_Python_project/release/05_trajectory_planning/02_frenet_moving_target/record_gen_lanechange.py</pre>
   <p>
     JSON 만 만들고 viewer 를 띄우지 않으려면 명령 끝에 <code>--no-viewer</code> 를 붙입니다.
     구현 전이면 <code>NotImplementedError</code> 가 나므로 먼저 <code># TODO</code> 를
     완성하세요.
   </p>
 
-  <h3>record 를 viewer 로 재생</h3>
+  <h3>record 를 viewer 로 재생 (두 record 한꺼번에)</h3>
   <pre>uv run python 01_Python_project/release/05_trajectory_planning/simulator_trajectory_planning.py 01_Python_project/release/05_trajectory_planning/02_frenet_moving_target/</pre>
   <p>
-    3D viewer 에 ego(파랑)·타겟(주황)·트랙·후보 궤적 다발·최적 궤적이 시간축을 따라
-    재생됩니다.
+    폴더 인자로 호출하면 폴더 하위의 <code>record_*.json</code> 두 개를 viewer 좌측
+    Recordings 패널에 모두 로드합니다 — 패널에서 클릭으로 lanekeep ↔ lanechange 전환.
+    3D viewer 에 ego(파랑)·타겟(주황)·트랙·후보 궤적 다발(파랑)·최적 궤적(초록)·예측
+    궤적(노랑)·매뉴버 화살표(청록/주황, lanechange 만) 가 시간축을 따라 재생됩니다.
   </p>
 
   <h3>디버그 신호 — 심화 분석 (선택)</h3>
   <p>
-    <code>record_gen.py</code> 의 <code>dbg.add(...)</code> 블록에는 <code>debug1/2/3</code> 주석
-    placeholder 가 준비돼 있습니다. 주석을 풀고 분석하고 싶은 값·식(예: 최적 궤적의
+    각 <code>record_gen_*.py</code> 의 <code>dbg.add(...)</code> 블록에는 <code>debug1/2/3</code>
+    주석 placeholder 가 준비돼 있습니다. 주석을 풀고 분석하고 싶은 값·식(예: 최적 궤적의
     비용, 후보 개수, 타겟과의 간격)을 채우면 그 신호가 record 에 함께 저장됩니다 —
     신호 추가·삭제·수정은 이 <code>dbg.add()</code> 호출의 kwarg 한 줄로 끝납니다.
   </p>
@@ -437,7 +525,7 @@
       <code>t=T</code> 의 위치·속도·가속도 6 개 조건을 모두 만족.</li>
     <li><b>4 차 다항식 경계조건</b> — <code>QuarticPolynomial</code> 이 <code>t=0</code> 의
       위치·속도·가속도 + <code>t=T</code> 의 속도·가속도 5 개 조건을 만족.</li>
-    <li><b>후보 궤적 구조</b> — <code>calc_frenet_paths</code> 가 24 개(=속도 3 × 차선 2 ×
+    <li><b>후보 궤적 구조</b> — <code>calc_frenet_paths</code> 가 40 개(=속도 5 × 차선 2 ×
       종료시간 4) 후보를 반환, 각 Frenet 시계열 길이가 일치.</li>
     <li><b>차선 후보 커버</b> — 후보들의 종료 횡위치가 두 차선 중앙을 모두 커버.</li>
     <li><b>폐루프 주행</b> — 20 초 시뮬레이션 동안 타겟과 충돌 없이(최소 간격 충분) 트랙을
@@ -465,12 +553,14 @@
   <h2><span class="num">7</span>제약</h2>
   <ul>
     <li><code>track_map.py</code>, <code>frenet_frame.py</code>, <code>target_vehicles.py</code>,
-      <code>test_frenet_moving_target.py</code> — <b>수정 금지</b> (검증 환경).</li>
+      <code>prediction.py</code>, <code>test_frenet_moving_target.py</code> — <b>수정 금지</b>
+      (검증 환경).</li>
     <li><code>frenet_planner.py</code> 의 클래스·함수 <b>시그니처 변경 금지</b> — 본문
       (<code># TODO</code>)만 채웁니다. 파일 상단의 상수(차량 한계·비용 가중치)도 그대로
       둡니다.</li>
-    <li>타겟 시나리오(<code>record_gen.py</code> 의 <code>build_targets</code>)는 자유롭게
-      실험해도 됩니다. <code>test_*.py</code> 의 값은 변경 금지.</li>
+    <li>타겟 시나리오(<code>record_gen_lanekeep.py</code> / <code>record_gen_lanechange.py</code>
+      의 <code>build_targets</code>)는 자유롭게 실험해도 됩니다. <code>test_*.py</code> 의
+      값은 변경 금지.</li>
     <li>AI 도구(Claude / Cursor / ChatGPT / Gemini 등) 사용은 무관합니다 — 무엇을 쓰든,
       안 쓰든 좋습니다.</li>
   </ul>

@@ -75,8 +75,8 @@ def main() -> None:
 
     x_visual = VX_VISUAL * t
     lane_x = [float(x_visual.min()) - 10.0, float(x_visual.max()) + 10.0]
-    measure_points = [[float(xv), float(ym), 0.1] for xv, ym in zip(x_visual, y_measure)]
-    estimate_points = [[float(xv), float(ye), 0.15] for xv, ye in zip(x_visual, y_estimate)]
+    measure_points = [[float(xv), float(ym), 0.1] for xv, ym in zip(x_visual, y_measure, strict=False)]
+    estimate_points = [[float(xv), float(ye), 0.15] for xv, ye in zip(x_visual, y_estimate, strict=False)]
 
     record = {
         "schema_version": 2,

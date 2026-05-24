@@ -24,6 +24,8 @@ from plotly.subplots import make_subplots
 
 # 05_frame_transform 의 구현을 그대로 import (폴더명이 숫자 prefix 라 sys.path 추가 필요).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "05_frame_transform"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from debug_signals import DebugSignals
 from frame_transform import Global2Local, PolynomialFitting, PolynomialValue
 from lat_pid_ff import LatPIDFF
 from lateral_pipeline_pid_ff import LateralPipeline
@@ -85,6 +87,7 @@ def main() -> None:
     prev_err: float | None = None
     err_sum: float = 0.0
     lookahead_x = vx * controller.lookahead_time
+    dbg = DebugSignals()  # 디버그 신호 수집기 — 신호 추가/삭제는 아래 dbg.add() 한 줄
     for i in range(steps):
         t[i] = i * DT
         X[i] = plant.X
@@ -109,6 +112,13 @@ def main() -> None:
         ff_arr[i] = kff * (vx**2 * 2.0 * float(out.coeff[-3][0]))
         prev_err = cur_err
         delta_arr[i] = out.delta
+        # 디버그 신호 — 주석을 풀고 원하는 값/식을 넣으세요.
+        # 추가·삭제·수정은 이 dbg.add() 의 kwarg 한 줄로 끝납니다.
+        dbg.add(
+            # debug1=<신호 값 또는 식>,
+            # debug2=<신호 값 또는 식>,
+            # debug3=<신호 값 또는 식>,
+        )
         plant.step(out.delta, vx)
 
     # plotly (opt-in: --plot) --------------------------------------------
@@ -166,6 +176,9 @@ def main() -> None:
             {"name": "i_term", "unit": "rad", "t": t.tolist(), "value": i_arr.tolist()},
             {"name": "ff_term", "unit": "rad", "t": t.tolist(), "value": ff_arr.tolist()},
         ],
+        # 디버그 신호 — 기본 blueprint 미포함. viewer 의 entity 패널에서 /debug/<name>
+        # 을 골라 TimeSeriesView 를 직접 추가하면 심화 분석 가능.
+        "debug_scalars": dbg.to_debug_scalars(t),
         "dynamic_paths": [
             {"name": "fit", "color": [255, 150, 0, 200], "radius": 0.08,
              "t": t.tolist(), "points_per_t": fit_curves},

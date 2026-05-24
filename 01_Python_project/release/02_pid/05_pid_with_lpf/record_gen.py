@@ -66,8 +66,8 @@ def main() -> None:
     lane_x = [float(x_visual.min()) - 10.0, float(x_visual.max()) + 10.0]
 
     # measurement 와 estimate 를 매 step 의 단일 marker 로 (dynamic_points)
-    measure_points = [[float(xv), float(ym), 0.1] for xv, ym in zip(x_visual, y_measure)]
-    estimate_points = [[float(xv), float(ye), 0.15] for xv, ye in zip(x_visual, y_estimate)]
+    measure_points = [[float(xv), float(ym), 0.1] for xv, ym in zip(x_visual, y_measure, strict=False)]
+    estimate_points = [[float(xv), float(ye), 0.15] for xv, ye in zip(x_visual, y_estimate, strict=False)]
 
     record = {
         "schema_version": 2,

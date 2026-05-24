@@ -87,7 +87,7 @@ def main() -> None:
     prev_err: float | None = None
     err_sum: float = 0.0
     lookahead_x = vx * controller.lookahead_time
-    dbg = DebugSignals()  # 디버그 신호 수집기 — 신호 추가/삭제는 아래 dbg.add() 한 줄
+    dbg = DebugSignals()  # noqa: F841 — 학생용 placeholder. 아래 loop 에 dbg.add(...) 한 줄로 추가
     for i in range(steps):
         t[i] = i * DT
         X[i] = plant.X

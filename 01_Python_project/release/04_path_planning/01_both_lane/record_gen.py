@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from both_lane_planner import both_lane_to_path
 from debug_signals import DebugSignals
 from frame_transform import Global2Local, PolynomialFitting, PolynomialValue
-from lane_both import LANE_WIDTH, lane, lane_center
+from lane_both import lane, lane_center
 from pure_pursuit import PurePursuit
 from vehicle_lat_both import VehicleLat
 

@@ -50,7 +50,8 @@ class LateralController:
     """통일 adapter — control_pipeline 이 controller-specific 분기 없이 호출.
 
     `ctrl` 은 `.step(coeff, vx) -> float` 시그니처만 만족하면 됨 (06/07/08 의 셋 다 호환).
-    `lookahead_x_fn` 은 viz 용 lookahead point 의 local frame x 좌표 (PP/PIDFF: vx*lookahead_time, Stanley: 0).
+    `lookahead_x_fn` 은 viz 용 lookahead point 의 local frame x 좌표
+    (PP/PIDFF: `vx*lookahead_time`, Stanley: `0`).
     """
     ctrl: object
     lookahead_x_fn: Callable[[float], float]

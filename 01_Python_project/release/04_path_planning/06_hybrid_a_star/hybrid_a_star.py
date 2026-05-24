@@ -4,16 +4,7 @@
 """
 from __future__ import annotations
 
-from typing import Callable
-
-from vehicle_kinematics import (
-    arc_collision,
-    discretize_pose,
-    euclid_xy,
-    in_space,
-    motion_primitives,
-    vehicle_move,
-)
+from collections.abc import Callable
 
 
 def hybrid_a_star(

@@ -7,8 +7,8 @@ estimation (poly fit) → control (controller.step) 의 통합 모듈.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import numpy as np
 

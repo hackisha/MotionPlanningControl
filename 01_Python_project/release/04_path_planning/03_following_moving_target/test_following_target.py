@@ -20,7 +20,6 @@ from both_lane_planner import both_lane_to_path  # noqa: E402
 from frame_transform import Global2Local, PolynomialFitting  # noqa: E402
 from pure_pursuit import PurePursuit  # noqa: E402
 
-
 DT = 0.1
 SIM_TIME = 30.0
 VX = 10.0

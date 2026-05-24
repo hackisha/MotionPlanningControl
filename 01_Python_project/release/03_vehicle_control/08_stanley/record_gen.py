@@ -78,7 +78,7 @@ def main() -> None:
     err_arr = np.zeros(steps)
     fit_curves: list[list[list[float]]] = []
     lookahead_pts: list[list[float]] = []  # Stanley 는 cross-track 사용 → lookahead_x=0 (ego 위치)
-    dbg = DebugSignals()  # 디버그 신호 수집기 — 신호 추가/삭제는 아래 dbg.add() 한 줄
+    dbg = DebugSignals()  # noqa: F841 — 학생용 placeholder. 아래 loop 에 dbg.add(...) 한 줄로 추가
     for i in range(steps):
         X[i] = plant.X
         Y[i] = plant.Y

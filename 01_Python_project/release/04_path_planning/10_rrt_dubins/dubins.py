@@ -6,10 +6,9 @@ Intent: intents/modules/04_path_planning/10_rrt_dubins.md
 가장 짧은 것을 골라 일정 호장 간격(`ds`)으로 sampling 한 (x, y, yaw) 시퀀스로
 반환한다. 모든 운동은 전진만, 곡률 |κ| ≤ kappa (= 1/R).
 
-참고:
-- Dubins, "On Curves of Minimal Length with a Constraint on Average Curvature,
-  and with Prescribed Initial and Terminal Positions and Tangents" (1957).
-- legacy 01_Python_project/04_PathPlanning/ex09_dubins.py — 본 구현의 출발점.
+참고: Dubins, "On Curves of Minimal Length with a Constraint on Average
+Curvature, and with Prescribed Initial and Terminal Positions and Tangents"
+(1957).
 """
 from __future__ import annotations
 

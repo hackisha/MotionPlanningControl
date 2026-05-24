@@ -18,8 +18,6 @@ Intent: intents/modules/05_trajectory_planning/02_frenet_moving_target.md
 """
 from __future__ import annotations
 
-from copy import deepcopy  # noqa: F401  (calc_frenet_paths 구현 시 사용)
-
 import numpy as np
 from prediction import predict_target_lanekeep
 

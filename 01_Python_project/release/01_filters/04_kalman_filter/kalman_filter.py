@@ -26,4 +26,13 @@ class KalmanFilter:
         #   x_new = x_pred + K · (measurement - C · x_pred)
         #   P_new = (1 - K · C) · P_pred
         # self.x, self.P 갱신 후 self.x 반환.
-        raise NotImplementedError
+        x_pred = self.A * self.x + self.B * control_input
+        p_pred = self.A * self.A * self.P + self.Q
+
+        innovation = measurement - self.C * x_pred
+        s = self.C * self.C * p_pred + self.R
+        k = p_pred * self.C / s
+
+        self.x = x_pred + k * innovation
+        self.P = (1.0 - k * self.C) * p_pred
+        return float(self.x)

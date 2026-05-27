@@ -45,7 +45,7 @@ def run_sim() -> dict:
     steps = int(SIM_TIME / DT)
     plant = VehicleLat(dt=DT, vx=VX)
     # [튜닝] PurePursuit lookahead_time 변경 시 응답 변화 확인 — test 의 값은 변경 X
-    pp = PurePursuit(L=4.0, lookahead_time=0.0)
+    pp = PurePursuit(L=4.0, lookahead_time=1.0)
     g2l_L = Global2Local(NUM_SAMPLE)
     g2l_R = Global2Local(NUM_SAMPLE)
     fitter_L = PolynomialFitting(DEGREE, NUM_SAMPLE)

@@ -20,4 +20,10 @@ class PDController:
         # - 두 번째 호출부터: d_error = (error - prev_error) / dt
         # - u = kp * error + kd * d_error
         # - 호출 끝에 prev_error 갱신 잊지 말 것
-        raise NotImplementedError
+        error = reference - measure
+        if self.prev_error is None:
+            d_error = 0.0
+        else:
+            d_error = (error - self.prev_error) / self.dt
+        self.prev_error = error
+        return float(self.kp * error + self.kd * d_error)

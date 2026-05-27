@@ -30,18 +30,20 @@ class LongitudinalController:
         self.prev_v_err: float | None = None
 
     def speed_step(self, v_des: float, v_ego: float) -> float:
-        # TODO: 속도 PID.
-        # 1) err = v_des - v_ego
-        # 2) 첫 호출 D=0; 이후 d_err = (err - prev_err) / dt
-        # 3) ax = kp_v · err + kd_v · d_err
-        # 4) prev_v_err 갱신
-        raise NotImplementedError
+        err = v_des - v_ego
+        if self.prev_v_err is None:
+            d_err = 0.0
+        else:
+            d_err = (err - self.prev_v_err) / self.dt
+
+        ax = self.kp_v * err + self.kd_v * d_err
+        self.prev_v_err = err
+        return float(ax)
 
     def timegap_step(self, gap: float, v_ego: float, v_target: float) -> float:
         """gap = ego heading 방향 종방향 projection (m). desired = τ·v_ego."""
-        # TODO: constant time-gap PD.
-        # 1) desired_gap = tau_gap · v_ego
-        # 2) gap_err = gap - desired_gap        (양수: 멀어진 상태)
-        # 3) rel_v = v_target - v_ego           (양수: target 이 멀어지는 중)
-        # 4) ax = kp_g · gap_err + kd_g · rel_v
-        raise NotImplementedError
+        constant_gap = self.tau_gap * v_ego
+        gap_err = gap - constant_gap
+        rel_v = v_target - v_ego
+        ax = self.kp_g * gap_err + self.kd_g * rel_v
+        return float(ax)

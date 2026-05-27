@@ -1,15 +1,13 @@
-"""Target Following Planner — leading vehicle 의 ego-local 위치 history 로부터
-ego 가 따라갈 path 의 polynomial 계수 생성.
-
-과제 명세는 problem.html 참조.
-"""
+"""Path planner that follows a leading vehicle's ego-local trace."""
 from __future__ import annotations
+
+import math
 
 import numpy as np
 
 
 class LeadingTargetTracker:
-    """ego frame 기준 leading vehicle 의 직전 N 위치를 저장. 매 step 회전 + 시프트로 갱신."""
+    """Maintain recent leading-vehicle positions in the current ego frame."""
 
     def __init__(self, max_history: int = 5):
         self.max_history = max_history
@@ -17,38 +15,61 @@ class LeadingTargetTracker:
 
     def update(self, target_local_xy: list[float],
                vx: float, yaw_rate: float, dt: float) -> None:
-        """현재 step 의 leading local 좌표를 history 에 추가하고, 직전 history
-        포인트들은 새 ego frame 좌표계로 갱신 (역회전 + 역시프트).
+        """Append the current target point and express history in the new ego frame.
 
-        Args:
-            target_local_xy: 현재 step ego local frame 의 leading 좌표 [x, y].
-            vx, yaw_rate, dt: ego 의 직전 step 운동.
+        During one control step the ego vehicle moves forward and may rotate.
+        Points measured in the previous ego frame must therefore be rotated by
+        the ego yaw change and shifted by the ego displacement so that all
+        stored points remain comparable in the latest ego-local coordinate.
         """
-        # TODO: 회전 + 시프트 후 윈도우 trim.
-        # 힌트:
-        #   - theta = yaw_rate * dt
-        #   - rot = [[cos, sin], [-sin, cos]]
-        #   - |yaw_rate| 가 매우 작으면 직진 근사: shift = [vx*dt, 0]
-        #     아니면: shift = [vx*dt, -vx*(1-cos(theta))/yaw_rate]
-        #   - history.append → (필요시 pop(0)) → 모든 점에 rot 적용 후 shift 빼기.
-        raise NotImplementedError
+        self.history.append([float(target_local_xy[0]), float(target_local_xy[1])])
+        if len(self.history) > self.max_history:
+            self.history.pop(0)
+
+        theta = float(yaw_rate) * float(dt)
+        c, s = math.cos(theta), math.sin(theta)
+        rot = np.array([[c, s], [-s, c]], dtype=float)
+
+        if abs(yaw_rate) < 1e-9:
+            shift = np.array([float(vx) * float(dt), 0.0], dtype=float)
+        else:
+            shift = np.array([
+                float(vx) * float(dt),
+                -float(vx) * (1.0 - math.cos(theta)) / float(yaw_rate),
+            ], dtype=float)
+
+        updated: list[list[float]] = []
+        for point in self.history:
+            xy = rot @ np.asarray(point, dtype=float) - shift
+            updated.append([float(xy[0]), float(xy[1])])
+        self.history = updated
 
 
 def target_following_path(history: list[list[float]]) -> np.ndarray:
-    """history 가 ego origin 을 통과하고 마지막 점의 heading 과 일치하는 3차 path 생성.
+    """Fit a cubic path through the ego origin toward the leading trace.
 
-    반환: shape (4, 1) column. history 길이 4 미만이면 zero coeff 반환 (직진).
-
-    제약 조건 3개:
-      - y(0) = 0      (ego origin 통과)
-      - y(xf) = yf    (last history 점 통과)
-      - y'(xf) = tan(heading)  (그 점에서 history slope 추정치와 heading 일치)
-    이 셋을 만족하는 path 형태: y = c3·x³ + c2·x² + 0·x + 0
+    The returned polynomial has the form y = c3*x^3 + c2*x^2. The zero
+    constant and first-order terms force the path to pass through the ego
+    origin with zero initial lateral slope, while the last history point and
+    fitted terminal slope shape the curve toward the leading vehicle.
     """
-    # TODO: 부족 history → 0 계수. 충분하면 polyfit 으로 heading 추정 → c3, c2 풀이.
-    # 힌트:
-    #   - polyfit (3차) → coeff [a3, a2, a1, a0] → heading = 3·a3·xf² + 2·a2·xf + a1
-    #   - tan_h = tan(heading)
-    #   - c3 = -(2·xf·yf − xf²·tan_h) / xf⁴
-    #   - c2 =  (3·xf²·yf − xf³·tan_h) / xf⁴
-    raise NotImplementedError
+    if len(history) < 4:
+        return np.zeros((4, 1))
+
+    pts = np.asarray(history, dtype=float)
+    order = np.argsort(pts[:, 0])
+    xs = pts[order, 0]
+    ys = pts[order, 1]
+
+    xf = float(xs[-1])
+    yf = float(ys[-1])
+    if abs(xf) < 1e-9:
+        return np.zeros((4, 1))
+
+    fit = np.polyfit(xs, ys, 3)
+    heading_slope = 3.0 * fit[0] * xf ** 2 + 2.0 * fit[1] * xf + fit[2]
+    tan_h = math.tan(math.atan(heading_slope))
+
+    c3 = (xf * tan_h - 2.0 * yf) / (xf ** 3)
+    c2 = (3.0 * yf - xf * tan_h) / (xf ** 2)
+    return np.array([[c3], [c2], [0.0], [0.0]], dtype=float)

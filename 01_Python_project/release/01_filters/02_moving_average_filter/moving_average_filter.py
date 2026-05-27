@@ -17,4 +17,5 @@ class MovingAverageFilter:
         # 인터페이스: 매 호출마다 입력 x 를 받아 갱신된 평균을 반환
         # 부분 채움 단계 (n < window) 에서는 들어온 만큼만 평균 (분모 = n)
         # 권장: self.buffer (deque, maxlen=window) 에 x 를 append 하고, buffer 의 평균 반환
-        raise NotImplementedError
+        self.buffer.append(float(x))
+        return float(sum(self.buffer) / len(self.buffer))

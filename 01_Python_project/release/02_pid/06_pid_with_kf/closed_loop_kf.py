@@ -23,4 +23,9 @@ def closed_loop_step(
     # 4) u = controller.step(target, y_estimate)
     # 5) plant.step(u)
     # 반환 4-tuple: (plant.y, y_measure, y_estimate, u)
-    raise NotImplementedError
+    y_measure = plant.measure()
+    state = estimator.step(y_measure, prev_u)
+    y_estimate = float(state[0])
+    u = controller.step(target, y_estimate)
+    plant.step(u)
+    return float(plant.y), float(y_measure), y_estimate, float(u)

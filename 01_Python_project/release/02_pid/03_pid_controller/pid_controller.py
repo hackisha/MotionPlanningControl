@@ -21,4 +21,11 @@ class PIDController:
         # - error_sum 누적: error_sum += error * dt   (dt 곱 잊지 말 것)
         # - u = kp*error + kd*d_error + ki*error_sum
         # - 호출 끝에 prev_error 갱신
-        raise NotImplementedError
+        error = reference - measure
+        if self.prev_error is None:
+            d_error = 0.0
+        else:
+            d_error = (error - self.prev_error) / self.dt
+        self.error_sum += error * self.dt
+        self.prev_error = error
+        return float(self.kp * error + self.kd * d_error + self.ki * self.error_sum)

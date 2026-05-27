@@ -1,18 +1,27 @@
-"""Dijkstra — 8-connected grid 의 최단 경로 탐색.
-
-과제 명세는 problem.html 참조.
-"""
+"""Dijkstra search on an 8-connected grid."""
 from __future__ import annotations
 
 import math
 from collections.abc import Callable
 
-# 8-connected actions: (dx, dy, cost). 직진=1, 대각=√2.
 _ACTIONS: list[tuple[int, int, float]] = [
     (0, -1, 1.0), (0, 1, 1.0), (-1, 0, 1.0), (1, 0, 1.0),
     (1, -1, math.sqrt(2)), (1, 1, math.sqrt(2)),
     (-1, 1, math.sqrt(2)), (-1, -1, math.sqrt(2)),
 ]
+
+
+def _reconstruct(
+    closed: dict[tuple[int, int], tuple[int, int] | None],
+    goal: tuple[int, int],
+) -> list[tuple[int, int]]:
+    path: list[tuple[int, int]] = []
+    node: tuple[int, int] | None = goal
+    while node is not None:
+        path.append(node)
+        node = closed[node]
+    path.reverse()
+    return path
 
 
 def dijkstra(
@@ -23,27 +32,35 @@ def dijkstra(
         [tuple[int, int], set[tuple[int, int]], float, float], None
     ] | None = None,
 ) -> list[tuple[int, int]]:
-    """start 부터 goal 까지 8-connected 최단 path 탐색.
+    """Return the least-cost 8-connected path from start to goal."""
+    open_dict: dict[tuple[int, int], tuple[float, tuple[int, int] | None]] = {
+        start: (0.0, None),
+    }
+    closed: dict[tuple[int, int], tuple[int, int] | None] = {}
 
-    Args:
-        start, goal: (x, y) 격자 좌표.
-        obstacles: 충돌 노드 set (O(1) 검사).
-        on_step: 매 노드 expand 직후 호출되는 viz 콜백 —
-                 `(current_node, open_set, g_cost, f_cost)`. open_set 은 그 시점의
-                 open 키 set, g_cost 는 current 의 누적 비용. Dijkstra 는
-                 heuristic 이 없어 f_cost = g_cost (동일값). None 이면 호출 안 함.
+    while open_dict:
+        current = min(open_dict, key=lambda node: open_dict[node][0])
+        g_cur, parent = open_dict.pop(current)
+        if current in closed:
+            continue
 
-    Returns:
-        path: [(x0, y0), ..., (xn, yn)] start → goal 순서. 미발견 시 [].
-    """
-    # TODO: Dijkstra 알고리즘으로 8-connected 최단 경로를 구하시오.
-    # 힌트:
-    #   - open_dict: {node: (g_cost, parent)} — 아직 expand 안 한 후보
-    #   - closed:    {node: parent}            — 이미 expand 한 노드
-    #   - 매 loop: open_dict 에서 g_cost 최소인 current 선택 → pop → closed 에 추가
-    #     → on_step(current, set(open_dict.keys()), g_cost, g_cost) 호출 (있으면 —
-    #       Dijkstra 는 heuristic 이 없어 f = g 라 g_cost 를 두 번 넘김)
-    #     → goal 이면 closed 의 parent 체인으로 path 복원해 반환
-    #     → 아니면 _ACTIONS 8 방향 child 검사 (obstacles / closed 제외 / cost 갱신)
-    #   - open_dict 비면 [] 반환 (미발견)
-    raise NotImplementedError
+        closed[current] = parent
+        if on_step is not None:
+            on_step(current, set(open_dict.keys()), g_cur, g_cur)
+
+        if current == goal:
+            return _reconstruct(closed, goal)
+
+        cx, cy = current
+        for dx, dy, step_cost in _ACTIONS:
+            child = (cx + dx, cy + dy)
+            if child in obstacles or child in closed:
+                continue
+
+            new_g = g_cur + step_cost
+            old = open_dict.get(child)
+            if old is not None and old[0] <= new_g:
+                continue
+            open_dict[child] = (new_g, current)
+
+    return []

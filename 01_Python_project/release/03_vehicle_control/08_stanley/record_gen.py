@@ -59,7 +59,7 @@ def main() -> None:
     vx = 10.0
     plant = VehicleLat(dt=DT, vx=vx, Y0=2.0)
     # [튜닝] 게인/파라미터 값을 바꿔 응답 변화 비교 — test_*.py 의 값은 변경 X (합격 기준)
-    s = Stanley(k=0.0)
+    s = Stanley(k=8.0)
     pipe = LateralPipeline(
         g2l=Global2Local(NUM_POINT),
         fitter=PolynomialFitting(DEGREE, NUM_POINT),

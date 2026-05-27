@@ -36,7 +36,7 @@ class LatPIDFF:
         ff_term = vx ** 2 * 2 * coeff[-3][0]  # coeff[-3] = y''(0)/2
         u = self.kp * error + self.kd * d_error + self.ki * self.error_sum + self.kff * ff_term
         self.prev_error = error
-        return u
+        return float(u)
     
         # TODO: local-frame 다항식 기반 lateral PID + curvature feedforward.
         # 1) d_lh = lookahead_time · vx   (lookahead 거리)
@@ -46,4 +46,3 @@ class LatPIDFF:
         # 5) ff_term = vx² · 2 · coeff[-3]   (곡률 ≈ y''(0) = 2·coeff[-3])
         # 6) δ = kp*error + kd*d_error + ki*error_sum + kff*ff_term
         # 7) prev_error 갱신
-        raise NotImplementedError

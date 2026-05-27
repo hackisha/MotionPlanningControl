@@ -85,4 +85,3 @@ class LateralPipeline:
         # return PipelineOutput(delta=float(delta), coeff=coeff,
         #                       fit_local_points=fit_local_points,
         #                       lookahead_local=(float(lookahead_x), float(y_lh)))
-        raise NotImplementedError

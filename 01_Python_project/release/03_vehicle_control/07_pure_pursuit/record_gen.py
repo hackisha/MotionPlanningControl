@@ -62,7 +62,7 @@ def main() -> None:
     L_vehicle = 4.0
     plant = VehicleLat(dt=DT, vx=vx, L=L_vehicle, Y0=2.0)
     # [튜닝] 게인/파라미터 값을 바꿔 응답 변화 비교 — test_*.py 의 값은 변경 X (합격 기준)
-    pp = PurePursuit(L=L_vehicle, lookahead_time=0.8)
+    pp = PurePursuit(L=L_vehicle, lookahead_time=2.0)
     pipe = LateralPipeline(
         g2l=Global2Local(NUM_POINT),
         fitter=PolynomialFitting(DEGREE, NUM_POINT),

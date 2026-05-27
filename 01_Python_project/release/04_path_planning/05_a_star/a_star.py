@@ -1,7 +1,4 @@
-"""A* — 8-connected grid 의 heuristic 기반 최단 경로 탐색.
-
-과제 명세는 problem.html 참조.
-"""
+"""A* search on an 8-connected grid."""
 from __future__ import annotations
 
 import math
@@ -18,6 +15,19 @@ def _euclid(a: tuple[int, int], b: tuple[int, int]) -> float:
     return math.hypot(a[0] - b[0], a[1] - b[1])
 
 
+def _reconstruct(
+    closed: dict[tuple[int, int], tuple[int, int] | None],
+    goal: tuple[int, int],
+) -> list[tuple[int, int]]:
+    path: list[tuple[int, int]] = []
+    node: tuple[int, int] | None = goal
+    while node is not None:
+        path.append(node)
+        node = closed[node]
+    path.reverse()
+    return path
+
+
 def a_star(
     start: tuple[int, int],
     goal: tuple[int, int],
@@ -27,31 +37,37 @@ def a_star(
         [tuple[int, int], set[tuple[int, int]], float, float], None
     ] | None = None,
 ) -> list[tuple[int, int]]:
-    """start 부터 goal 까지 8-connected A* 경로 탐색.
+    """Return an 8-connected path using f = g + weight*h."""
+    h0 = weight_heuristic * _euclid(start, goal)
+    open_dict: dict[tuple[int, int], tuple[float, float, tuple[int, int] | None]] = {
+        start: (h0, 0.0, None),
+    }
+    closed: dict[tuple[int, int], tuple[int, int] | None] = {}
 
-    Args:
-        start, goal: (x, y) 격자 좌표.
-        obstacles: 충돌 노드 set.
-        weight_heuristic: heuristic 가중치. 1.0 = admissible (최적). >1 = greedy bias.
-        on_step: 매 노드 expand 직후 호출되는 viz 콜백 —
-                 `(current, open_set, g_cost, f_cost)`. g_cost 는 current 의
-                 누적 비용, f_cost = g + weight·h.
+    while open_dict:
+        current = min(open_dict, key=lambda node: open_dict[node][0])
+        f_cur, g_cur, parent = open_dict.pop(current)
+        if current in closed:
+            continue
 
-    Returns:
-        path: [(x0, y0), ..., (xn, yn)] start → goal. 미발견 시 [].
-    """
-    # TODO: A* 알고리즘으로 8-connected heuristic 기반 최단 경로를 구하시오.
-    # 힌트:
-    #   - open_dict: {node: (f_cost, g_cost, parent)} — f = g + weight·h
-    #     h(node) = _euclid(node, goal)
-    #   - closed: {node: parent}
-    #   - 매 loop: open_dict 에서 f 최소인 current 선택 → pop → closed 추가
-    #     → on_step(current, set(open_dict.keys()), g_cost, f_cost) 호출 (있으면)
-    #     → goal 이면 closed 의 parent 체인으로 path 복원 반환
-    #     → 아니면 _ACTIONS 8 방향 child 검사:
-    #         child in obstacles or closed → skip
-    #         new_g = g_cur + action_cost
-    #         new_f = new_g + weight_heuristic · _euclid(child, goal)
-    #         기존 open 의 f 가 더 작거나 같으면 skip, 아니면 갱신
-    #   - open_dict 비면 [] 반환
-    raise NotImplementedError
+        closed[current] = parent
+        if on_step is not None:
+            on_step(current, set(open_dict.keys()), g_cur, f_cur)
+
+        if current == goal:
+            return _reconstruct(closed, goal)
+
+        cx, cy = current
+        for dx, dy, step_cost in _ACTIONS:
+            child = (cx + dx, cy + dy)
+            if child in obstacles or child in closed:
+                continue
+
+            new_g = g_cur + step_cost
+            new_f = new_g + weight_heuristic * _euclid(child, goal)
+            old = open_dict.get(child)
+            if old is not None and old[0] <= new_f:
+                continue
+            open_dict[child] = (new_f, new_g, current)
+
+    return []

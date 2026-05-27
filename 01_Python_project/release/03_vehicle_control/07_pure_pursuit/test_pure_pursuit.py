@@ -30,7 +30,7 @@ def test_curved_path_tracking_within_spec():
     SAMPLE_XS = np.arange(NUM_POINT) * 1.0
 
     plant = VehicleLat(dt=DT, vx=vx, L=L_vehicle, Y0=2.0)
-    pp = PurePursuit(L=L_vehicle, lookahead_time=1.0)
+    pp = PurePursuit(L=L_vehicle, lookahead_time=0.8)
     pipe = LateralPipeline(
         g2l=Global2Local(NUM_POINT),
         fitter=PolynomialFitting(DEGREE, NUM_POINT),

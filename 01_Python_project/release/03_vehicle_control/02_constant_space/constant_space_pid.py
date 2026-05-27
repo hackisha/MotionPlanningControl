@@ -25,7 +25,7 @@ class ConstantSpacePID:
         self.error_sum += error * self.dt
         u = self.kp * error + self.kd * d_error + self.ki * self.error_sum
         self.prev_error = error
-        return u
+        return float(u)
     
         # TODO: 상대 거리 기반 PID 를 구현하시오.
         # - error = (target_x - ego_x) - target_space   (부호 주의)
@@ -33,4 +33,3 @@ class ConstantSpacePID:
         # - error_sum += error * dt
         # - u = kp*error + kd*d_error + ki*error_sum
         # - prev_error 갱신
-        raise NotImplementedError

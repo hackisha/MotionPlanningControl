@@ -22,4 +22,8 @@ def closed_loop_step(
     # 3) u = controller.step(target, y_estimate) # PID 는 추정값 사용 (raw 노이즈 ❌)
     # 4) plant.step(u)                      # actuator → 동역학 한 스텝
     # 반환 4-tuple: (plant.y, y_measure, y_estimate, u)  ← 모두 float
-    raise NotImplementedError
+    y_measure = plant.measure()
+    y_estimate = estimator.step(y_measure)
+    u = controller.step(target, y_estimate)
+    plant.step(u)
+    return float(plant.y), float(y_measure), float(y_estimate), float(u)

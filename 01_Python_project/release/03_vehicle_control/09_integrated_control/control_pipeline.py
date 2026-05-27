@@ -97,12 +97,10 @@ class LongitudinalDecision:
         self.invaded = False
 
     def long_mode(self, t: float, ego: EgoState, target: TargetState) -> str:
-        # TODO: target invasion latch.
-        # 1) self.invaded 가 아직 False 면 target 의 road-frame Y 계산:
-        #    y_in_road = target.Y - self.road.y_center(target.X)
-        # 2) y_in_road < self.y_invasion_offset 이면 self.invaded = True (latch)
-        # 3) return "timegap" if self.invaded else "speed"
-        raise NotImplementedError
+        if not self.invaded:
+            y_in_road = target.Y - self.road.y_center(target.X)
+            self.invaded = y_in_road < self.y_invasion_offset
+        return "timegap" if self.invaded else "speed"
 
 
 # -- 통합 pipeline ------------------------------------------------------------
@@ -143,7 +141,35 @@ class ControlPipeline:
         self.v_des = v_des
 
     def step(self, t: float, ego: EgoState, target: TargetState) -> PipelineOutput:
-        # TODO: 통합 4-단계 step.
+        cos_y, sin_y = np.cos(ego.Yaw), np.sin(ego.Yaw)
+        perception_x_global = ego.X + cos_y * self.sample_xs
+        perception_y_global = self.ref_y_fn(perception_x_global)
+        points_global = np.column_stack([perception_x_global, perception_y_global])
+        self.g2l.convert(points_global, ego.Yaw, ego.X, ego.Y)
+        self.fitter.fit(self.g2l.local_points)
+        coeff = self.fitter.coeff
+        self.ev.calculate(coeff, self.x_local)
+        fit_local_points = self.ev.points.copy()
+        delta = self.lat_ctrl.step(coeff, ego.vx)
+        lookahead_x = self.lat_ctrl.lookahead_x(ego.vx)
+        y_lh = _polyval_at(coeff, lookahead_x)
+        mode = self.decision.long_mode(t, ego, target)
+        ax_speed = self.long_ctrl.speed_step(self.v_des, ego.vx)
+        if mode == "speed":
+            ax = ax_speed
+        else:
+            gap = cos_y * (target.X - ego.X) + sin_y * (target.Y - ego.Y)
+            ax_timegap = self.long_ctrl.timegap_step(gap, ego.vx, target.vx)
+            ax = min(ax_speed, ax_timegap)
+        return PipelineOutput(
+            delta=float(delta),
+            ax=float(ax),
+            long_mode=mode,
+            coeff=coeff,
+            fit_local_points=fit_local_points,
+            lookahead_local=(lookahead_x, y_lh),
+        )
+
         # 1) perception (ego heading projection sampling — 곡선 도로 OK):
         #    cos_y, sin_y = cos(ego.Yaw), sin(ego.Yaw)
         #    x_global = ego.X + cos_y · self.sample_xs
@@ -168,4 +194,3 @@ class ControlPipeline:
         # (ACC 의 timegap 식은 gap 멀면 양수 가속 명령까지 내지만, ego lane 침범 target 앞에서
         #  가속하면 안 됨 → speed 명령 (=0 평형) 으로 capping. 작은 쪽 = 더 보수적인 ax.)
         # return PipelineOutput(delta, ax, mode, coeff, fit_local_points, (lookahead_x, y_lh))
-        raise NotImplementedError

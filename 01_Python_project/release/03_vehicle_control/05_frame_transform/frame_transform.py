@@ -30,7 +30,6 @@ class Global2Local:
         # 2) R(θ) = [[cosθ, -sinθ], [sinθ, cosθ]]
         # 3) 각 점에 대해: local_pt = R · (global_pt - [x_ego, y_ego])
         # 결과를 self.local_points 에 저장하고 반환
-        raise NotImplementedError
 
 
 class PolynomialFitting:
@@ -57,7 +56,6 @@ class PolynomialFitting:
         # 2) b_i = points[i][1]
         # 3) coeff = (Aᵀ A)⁻¹ Aᵀ b   (정상방정식; np.linalg.inv 사용)
         # 결과를 self.coeff 에 저장하고 반환
-        raise NotImplementedError
 
 
 class PolynomialValue:
@@ -81,4 +79,3 @@ class PolynomialValue:
         # TODO: 주어진 coeff (고차 → 저차 순서) 로 x 배열에서 y 값 평가.
         # 각 i 에 대해: y[i] = Σ_j coeff[j] · x[i] ** (degree - j)
         # 결과를 self.y, self.points 에 저장하고 self.y 반환
-        raise NotImplementedError

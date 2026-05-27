@@ -27,4 +27,3 @@ class Stanley:
         # 2) cross_track   = coeff[-1]   (상수항: e_y, ego ↔ path 의 y 거리)
         # 3) δ = heading_error + atan( k · cross_track / (vx + ε) )
         # ε 는 저속 0 분모 회피
-        raise NotImplementedError

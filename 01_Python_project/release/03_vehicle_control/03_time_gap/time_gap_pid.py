@@ -24,7 +24,7 @@ class TimeGapPID:
         else:
             d_error = (error - self.prev_error) / self.dt
         self.error_sum += error * self.dt
-        u = self.kp * error + self.kd * d_error + self.ki
+        u = self.kp * error + self.kd * d_error + self.ki * self.error_sum
         self.prev_error = error
         return u
     
@@ -37,4 +37,3 @@ class TimeGapPID:
         # - 첫 호출 D=0
         # - error_sum += error * dt
         # - u = kp*error + kd*d_error + ki*error_sum
-        raise NotImplementedError

@@ -1,73 +1,53 @@
-"""Frenet 좌표계 최적 궤적 계획기 — 이동 타겟 회피.
-
-Intent: intents/modules/05_trajectory_planning/02_frenet_moving_target.md
-
-매 스텝 ego 의 현재 Frenet 상태에서 여러 후보 궤적(목표 차선 × 종방향 속도 ×
-종료 시간 조합)을 생성하고, 비용(jerk + 종료시간 + 차선 일관성 + 목표 속도)이
-최소이면서 동역학 한계·충돌 검사를 통과하는 궤적을 고른다.
-
-타겟 예측: 차선 유지(lanekeep) 모델 — `prediction.predict_target_lanekeep` (별도
-모듈로 분리). 종방향은 현재 s_d 로 등속 외삽, 횡방향 d 는 고정. planner 는
-관측 가능한 (s, d, s_d) 만 사용하므로 lanekeep baseline 으로 충돌 검사한다 —
-차로변경 의도 반영 예측(`predict_target_lanechange`)은 별도 시각화에서 비교.
-
-구현 과제 (# TODO):
-  - QuinticPolynomial.__init__ / QuarticPolynomial.__init__  (다항식 계수 풀이)
-  - calc_frenet_paths                                        (후보 궤적 생성 + 비용)
-그 외(좌표 변환·동역학/충돌 검사·예측·최적 선택)는 주어진 환경이다.
-"""
+"""Frenet optimal trajectory planner for moving-target avoidance."""
 from __future__ import annotations
 
 import numpy as np
 from prediction import predict_target_lanekeep
 
-# --- 차량·트랙 한계 (차량 스케일) ---
-V_MAX = 18.0      # 최대 속도 [m/s]
-V_MIN = 1.0       # 최소 속도 [m/s]
-ACC_MAX = 8.0     # 최대 가속도 [m/s^2]
-K_MAX = 0.5       # 최대 곡률 [1/m]
+V_MAX = 18.0
+V_MIN = 1.0
+ACC_MAX = 8.0
+K_MAX = 0.5
 
-TARGET_SPEED = 10.0   # 목표 주행 속도 [m/s]
-COL_CHECK = 3.5       # 충돌 판정 거리 [m] (차선 간격 LANE_WIDTH 보다 작아야 함)
+TARGET_SPEED = 10.0
+COL_CHECK = 3.5
 
-# --- 후보 궤적 생성 파라미터 ---
-MIN_T = 2.0       # 최소 종료 시간 [s]
-MAX_T = 5.0       # 최대 종료 시간 [s]
-DT_T = 1.0        # 종료 시간 후보 간격 [s]
-DT = 0.1          # 궤적 시간 분해능 [s]
+MIN_T = 2.0
+MAX_T = 5.0
+DT_T = 1.0
+DT = 0.1
 
-# --- 비용 가중치 ---
-K_J_lat = 0.05    # 횡방향 jerk
-K_J_lon = 0.1     # 종방향 jerk
-K_T = 0.5         # 종료 시간
-K_D = 5.0         # 차선 일관성 (consistency)
-K_V = 80.0        # 목표 속도 도달
-K_LAT = 1.0       # 횡방향 비용 비중
-K_LON = 1.0       # 종방향 비용 비중
+K_J_lat = 0.05
+K_J_lon = 0.1
+K_T = 0.5
+K_D = 5.0
+K_V = 80.0
+K_LAT = 1.0
+K_LON = 1.0
 
-# 횡방향 종료 위치 후보 (양 차선 중앙) — LANE_WIDTH=4.0 기준
 DF_SET = np.array([2.0, -2.0])
-# 종방향 종료 속도 후보 (목표 속도 대비 가감속) — 깊은 감속(-6/-4) 포함으로
-# 느린 앞차나 차로변경 중인 타겟에 막혀도 follow 가능, 멈춤 회피.
-# 종료 속도가 V_MIN 아래로 가는 후보는 check_path 가 자동 reject (no-op 후보).
-# 결합 가속도는 ACC_MAX 로 제한되므로 깊은 감속이라도 무리한 궤적은 걸러진다.
 SF_D_SET = np.array([-6.0, -4.0, -2.0, 0.0, 2.0])
 
 
 class QuinticPolynomial:
-    """5 차 다항식 — 양 끝의 위치·속도·가속도 6 개 경계조건을 만족 (횡방향 궤적용)."""
+    """Fifth-order polynomial satisfying position/velocity/acceleration ends."""
 
     def __init__(self, xi, vi, ai, xf, vf, af, T):
-        """t=0 에서 (xi, vi, ai), t=T 에서 (xf, vf, af) 를 만족하는 6 개 계수 산출.
+        self.a0 = float(xi)
+        self.a1 = float(vi)
+        self.a2 = float(ai) / 2.0
 
-        a0~a2 는 t=0 조건에서 바로 결정되고, a3~a5 는 t=T 의 위치·속도·가속도
-        3 개 조건이 만드는 3×3 선형계를 풀어 얻는다.
-        """
-        # TODO: 경계조건으로부터 self.a0 ~ self.a5 를 계산하세요.
-        #   - a0, a1, a2 : t=0 의 (위치, 속도, 가속도) 조건에서 직접 결정.
-        #   - a3, a4, a5 : t=T 의 (위치, 속도, 가속도) 3 개 조건이 만드는
-        #                  3×3 선형계 (intent 의 Math 섹션 참조) 를 풀어 구한다.
-        raise NotImplementedError("QuinticPolynomial.__init__ 를 구현하세요")
+        A = np.array([
+            [T ** 3, T ** 4, T ** 5],
+            [3.0 * T ** 2, 4.0 * T ** 3, 5.0 * T ** 4],
+            [6.0 * T, 12.0 * T ** 2, 20.0 * T ** 3],
+        ], dtype=float)
+        b = np.array([
+            xf - (self.a0 + self.a1 * T + self.a2 * T ** 2),
+            vf - (self.a1 + 2.0 * self.a2 * T),
+            af - (2.0 * self.a2),
+        ], dtype=float)
+        self.a3, self.a4, self.a5 = np.linalg.solve(A, b)
 
     def calc_pos(self, t):
         return (self.a0 + self.a1 * t + self.a2 * t**2
@@ -85,23 +65,22 @@ class QuinticPolynomial:
 
 
 class QuarticPolynomial:
-    """4 차 다항식 — 시작의 위치·속도·가속도 + 종료의 속도·가속도 (종방향 궤적용).
-
-    종방향은 종료 '위치' 를 구속하지 않는다 (velocity-keeping) — 그래서 5 차가 아닌
-    4 차로 충분하다.
-    """
+    """Fourth-order polynomial for longitudinal speed keeping."""
 
     def __init__(self, xi, vi, ai, vf, af, T):
-        """t=0 에서 (xi, vi, ai), t=T 에서 (vf, af) 를 만족하는 5 개 계수 산출.
+        self.a0 = float(xi)
+        self.a1 = float(vi)
+        self.a2 = float(ai) / 2.0
 
-        a0~a2 는 t=0 조건에서 바로 결정되고, a3~a4 는 t=T 의 속도·가속도 2 개
-        조건이 만드는 2×2 선형계를 풀어 얻는다.
-        """
-        # TODO: 경계조건으로부터 self.a0 ~ self.a4 를 계산하세요.
-        #   - a0, a1, a2 : t=0 의 (위치, 속도, 가속도) 조건에서 직접 결정.
-        #   - a3, a4     : t=T 의 (속도, 가속도) 2 개 조건이 만드는 2×2 선형계
-        #                  (intent 의 Math 섹션 참조) 를 풀어 구한다.
-        raise NotImplementedError("QuarticPolynomial.__init__ 를 구현하세요")
+        A = np.array([
+            [3.0 * T ** 2, 4.0 * T ** 3],
+            [6.0 * T, 12.0 * T ** 2],
+        ], dtype=float)
+        b = np.array([
+            vf - (self.a1 + 2.0 * self.a2 * T),
+            af - (2.0 * self.a2),
+        ], dtype=float)
+        self.a3, self.a4 = np.linalg.solve(A, b)
 
     def calc_pos(self, t):
         return self.a0 + self.a1 * t + self.a2 * t**2 + self.a3 * t**3 + self.a4 * t**4
@@ -117,25 +96,21 @@ class QuarticPolynomial:
 
 
 class FrenetPath:
-    """한 후보 궤적 — Frenet 시계열 + 전역 시계열 + 비용."""
+    """One candidate trajectory in Frenet and global coordinates."""
 
     def __init__(self):
         self.t: list[float] = []
-        # 횡방향 (Frenet)
         self.d: list[float] = []
         self.d_d: list[float] = []
         self.d_dd: list[float] = []
         self.d_ddd: list[float] = []
-        # 종방향 (Frenet)
         self.s: list[float] = []
         self.s_d: list[float] = []
         self.s_dd: list[float] = []
         self.s_ddd: list[float] = []
-        # 비용
         self.c_lat = 0.0
         self.c_lon = 0.0
         self.c_tot = 0.0
-        # 전역 좌표
         self.x: list[float] = []
         self.y: list[float] = []
         self.yaw: list[float] = []
@@ -143,40 +118,74 @@ class FrenetPath:
         self.kappa: list[float] = []
 
 
+def _append_lateral(fp: FrenetPath, lat: QuinticPolynomial,
+                    t: float, T: float, df: float,
+                    df_d: float, df_dd: float) -> None:
+    if t <= T:
+        fp.d.append(float(lat.calc_pos(t)))
+        fp.d_d.append(float(lat.calc_vel(t)))
+        fp.d_dd.append(float(lat.calc_acc(t)))
+        fp.d_ddd.append(float(lat.calc_jerk(t)))
+    else:
+        fp.d.append(float(df))
+        fp.d_d.append(float(df_d))
+        fp.d_dd.append(float(df_dd))
+        fp.d_ddd.append(0.0)
+
+
+def _append_longitudinal(fp: FrenetPath, lon: QuarticPolynomial,
+                         t: float, T: float) -> None:
+    if t <= T:
+        fp.s.append(float(lon.calc_pos(t)))
+        fp.s_d.append(float(lon.calc_vel(t)))
+        fp.s_dd.append(float(lon.calc_acc(t)))
+        fp.s_ddd.append(float(lon.calc_jerk(t)))
+    else:
+        dt_tail = t - T
+        s_T = float(lon.calc_pos(T))
+        v_T = float(lon.calc_vel(T))
+        a_T = float(lon.calc_acc(T))
+        fp.s.append(s_T + v_T * dt_tail + 0.5 * a_T * dt_tail ** 2)
+        fp.s_d.append(v_T + a_T * dt_tail)
+        fp.s_dd.append(a_T)
+        fp.s_ddd.append(0.0)
+
+
 def calc_frenet_paths(si, si_d, si_dd, sf_d, sf_dd,
                       di, di_d, di_dd, df_d, df_dd, opt_d):
-    """ego 의 현재 Frenet 상태에서 후보 궤적들을 생성하고 각 비용을 매긴다.
+    """Generate Frenet candidate trajectories and assign scalar costs."""
+    paths: list[FrenetPath] = []
+    time_candidates = np.arange(MIN_T, MAX_T + 0.5 * DT_T, DT_T)
+    horizon_ts = np.arange(0.0, MAX_T, DT)
 
-    (종방향 속도 후보 SF_D_SET) × (횡방향 종료 위치 후보 DF_SET) ×
-    (종료 시간 후보 MIN_T..MAX_T) 의 모든 조합에 대해:
-      1. 횡방향: QuinticPolynomial 로 (di,di_d,di_dd) → (df, df_d, df_dd) 궤적.
-      2. 종방향: QuarticPolynomial 로 (si,si_d,si_dd) → (sf_d+Δ, sf_dd) 궤적.
-      3. T < MAX_T 면 마지막 상태를 등속 외삽해 모든 궤적 길이를 MAX_T 로 통일.
-      4. 비용 = jerk + 종료시간 + 차선 일관성(opt_d 대비) + 목표 속도 오차.
+    for target_speed_delta in SF_D_SET:
+        target_speed = float(sf_d + target_speed_delta)
+        for df in DF_SET:
+            for T in time_candidates:
+                lat = QuinticPolynomial(di, di_d, di_dd, df, df_d, df_dd, float(T))
+                lon = QuarticPolynomial(si, si_d, si_dd, target_speed, sf_dd, float(T))
 
-    Args:
-        si, si_d, si_dd: 종방향 시작 위치·속도·가속도.
-        sf_d, sf_dd: 종방향 종료 기준 속도·가속도 (SF_D_SET 이 sf_d 에 더해짐).
-        di, di_d, di_dd: 횡방향 시작 위치·속도·가속도.
-        df_d, df_dd: 횡방향 종료 속도·가속도 (보통 0 — 차선 중앙 정렬).
-        opt_d: 직전 스텝 최적 궤적의 종료 횡위치 — 차선 일관성 비용 기준.
+                fp = FrenetPath()
+                for t in horizon_ts:
+                    fp.t.append(float(t))
+                    _append_lateral(fp, lat, float(t), float(T), float(df), df_d, df_dd)
+                    _append_longitudinal(fp, lon, float(t), float(T))
 
-    Returns:
-        list[FrenetPath] — Frenet 시계열(t,d,s,...)과 비용(c_lat,c_lon,c_tot)이
-        채워진 후보들. 전역 좌표(x,y,...)는 calc_global_paths 에서 채운다.
-    """
-    # TODO: 후보 궤적들을 생성하고 각 비용을 매겨 list[FrenetPath] 로 반환하세요.
-    #   (SF_D_SET × DF_SET × np.arange(MIN_T, MAX_T+DT_T, DT_T)) 의 모든 조합:
-    #     1. 횡방향 QuinticPolynomial, 종방향 QuarticPolynomial 로 0..T 를 DT 간격
-    #        샘플링해 FrenetPath 의 d/d_d/.../s/s_d/... 시계열을 채운다.
-    #     2. T < MAX_T 인 궤적은 마지막 상태를 등속 외삽해 길이를 MAX_T 로 통일.
-    #     3. 비용 c_lat / c_lon / c_tot 산정 (intent 의 Math 섹션 참조).
-    #   deepcopy 는 횡방향만 채운 FrenetPath 를 종방향용으로 복제할 때 유용하다.
-    raise NotImplementedError("calc_frenet_paths 를 구현하세요")
+                j_lat = float(np.sum(np.square(fp.d_ddd)))
+                j_lon = float(np.sum(np.square(fp.s_ddd)))
+                terminal_d = fp.d[-1]
+                terminal_speed = fp.s_d[-1]
+
+                fp.c_lat = K_J_lat * j_lat + K_T * float(T) + K_D * (terminal_d - opt_d) ** 2
+                fp.c_lon = K_J_lon * j_lon + K_T * float(T) + K_V * (TARGET_SPEED - terminal_speed) ** 2
+                fp.c_tot = K_LAT * fp.c_lat + K_LON * fp.c_lon
+                paths.append(fp)
+
+    return paths
 
 
 def calc_global_paths(fplist, track):
-    """각 후보 궤적의 Frenet (s, d) 시계열을 전역 (x, y, yaw, ds, kappa) 로 변환."""
+    """Convert each Frenet candidate to global x, y, yaw, ds, and curvature."""
     for fp in fplist:
         for _s, _d in zip(fp.s, fp.d, strict=True):
             x, y, _ = track.to_cartesian(_s, _d)
@@ -197,7 +206,7 @@ def calc_global_paths(fplist, track):
 
 
 def collision_check(fp, target_states, track):
-    """fp 가 어떤 타겟의 lanekeep 예측 궤적과 COL_CHECK 이내로 접근하면 True."""
+    """Return True when a candidate comes too close to predicted targets."""
     for s, d, s_d in target_states:
         s_pred, d_pred = predict_target_lanekeep(s, d, s_d, MAX_T, DT)
         for i in range(len(fp.t)):
@@ -208,7 +217,7 @@ def collision_check(fp, target_states, track):
 
 
 def check_path(fplist, target_states, track):
-    """동역학 한계(속도·가속도·곡률)와 충돌 검사를 통과하는 후보만 반환."""
+    """Filter candidates by dynamics limits and collision checks."""
     ok: list[FrenetPath] = []
     for fp in fplist:
         acc_sq = [a_s**2 + a_d**2 for a_s, a_d in zip(fp.s_dd, fp.d_dd, strict=True)]
@@ -229,12 +238,7 @@ def check_path(fplist, target_states, track):
 def frenet_optimal_planning(si, si_d, si_dd, sf_d, sf_dd,
                             di, di_d, di_dd, df_d, df_dd,
                             target_states, track, opt_d):
-    """후보 궤적을 생성·검증하고 비용 최소 궤적을 고른다.
-
-    Returns:
-        (valid, best) — valid: 검사를 통과한 후보 목록(시각화용),
-        best: 비용 최소 FrenetPath (검사 통과 후보가 없으면 None).
-    """
+    """Generate, convert, validate, and select the minimum-cost trajectory."""
     fplist = calc_frenet_paths(si, si_d, si_dd, sf_d, sf_dd,
                                di, di_d, di_dd, df_d, df_dd, opt_d)
     fplist = calc_global_paths(fplist, track)

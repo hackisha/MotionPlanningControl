@@ -23,11 +23,10 @@ class PurePursuit:
         d_lh = self.lookahead_time * vx
         y_lh = _polyval_at(coeff, d_lh)
         delta = np.arctan2(2 * self.L * y_lh, d_lh ** 2 + y_lh ** 2 + _EPS)
-        return delta
+        return float(delta)
     
         # TODO: Pure Pursuit 식을 구현하시오 (stateless — 내부 상태 없음).
         # 1) d_lh = lookahead_time · vx
         # 2) y_lh = _polyval_at(coeff, d_lh)
         # 3) δ = atan( 2 · L · y_lh / (d_lh² + y_lh² + ε) )
         #    ε(=_EPS) 는 0 분모 회피 (직진 시점 y_lh=0 안전)
-        raise NotImplementedError

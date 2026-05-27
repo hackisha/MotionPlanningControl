@@ -21,7 +21,7 @@ class KinematicLateralPID:
         else:
             d_error = (error - self.prev_error) / self.dt
         self.error_sum += error * self.dt
-        u = self.kp * error + self.kd * d_error + self.ki
+        u = self.kp * error + self.kd * d_error + self.ki * self.error_sum
         self.prev_error = error
         return u
             
@@ -30,4 +30,3 @@ class KinematicLateralPID:
         # - 첫 호출 D=0
         # - error_sum += error * dt
         # - 반환값 단위: 라디안 (조향각 δ)
-        raise NotImplementedError
